@@ -116,7 +116,7 @@ build
 *.db
 *.sqlite
 *.sqlite3
-
+ 
 # IDE / Editor
 .idea
 .vscode
