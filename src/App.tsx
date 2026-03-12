@@ -22,6 +22,7 @@ export default function App() {
   const GAS_URL = import.meta.env.VITE_GAS_URL || '';
 
   useEffect(() => {
+    console.log("GAS_URL Status:", GAS_URL ? "Configured" : "NOT CONFIGURED! Check .env");
     fetchReports();
   }, [filter]);
 
