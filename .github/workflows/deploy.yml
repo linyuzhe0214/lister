@@ -35,6 +35,8 @@ jobs:
 
       - name: Build project
         run: npm run build
+        env:
+          VITE_GAS_URL: ${{ secrets.VITE_GAS_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

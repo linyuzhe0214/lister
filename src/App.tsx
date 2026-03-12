@@ -18,16 +18,24 @@ export default function App() {
   const [globalSearch, setGlobalSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // VITE_GAS_URL will be provided in .env
+  const GAS_URL = import.meta.env.VITE_GAS_URL || '';
+
   useEffect(() => {
     fetchReports();
   }, [filter]);
 
   const fetchReports = async () => {
+    if (!GAS_URL) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const res = await fetch(`/api/reports?location_type=${filter}`);
+      const res = await fetch(`${GAS_URL}?location_type=${filter}`);
       const data = await res.json();
-      setReports(data);
+      // Ensure data is array (in case of error message format)
+      setReports(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
     } finally {
@@ -71,20 +79,29 @@ export default function App() {
   }, [reports, filterHighway, filterDamage, sortByDate]);
 
   const handleAddReport = async (data: Report) => {
+    if (!GAS_URL) {
+      alert('請先在 .env 設定您的 Google Apps Script 網址 (VITE_GAS_URL)');
+      return;
+    }
     try {
       const isEditing = !!editingReport;
-      const url = isEditing ? `/api/reports/${editingReport.id}` : '/api/reports';
-      const method = isEditing ? 'PUT' : 'POST';
+      const payload = isEditing 
+        ? { action: 'update', id: editingReport.id, data }
+        : { action: 'create', data };
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        // Use text/plain to bypass CORS preflight
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
       });
-      if (res.ok) {
+      
+      if (res.ok || res.type === 'opaque') {
         setIsFormOpen(false);
         setEditingReport(null);
         fetchReports();
+      } else {
+        throw new Error('Response not OK');
       }
     } catch (error) {
       console.error('Failed to save report:', error);
@@ -102,14 +119,19 @@ export default function App() {
   };
 
   const confirmDelete = async () => {
-    if (deletingReportId === null) return;
+    if (deletingReportId === null || !GAS_URL) return;
     try {
-      const res = await fetch(`/api/reports/${deletingReportId}`, { method: 'DELETE' });
-      if (res.ok) {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'delete', id: deletingReportId }),
+      });
+      if (res.ok || res.type === 'opaque') {
         fetchReports();
       }
     } catch (error) {
       console.error('Failed to delete report:', error);
+      alert('刪除失敗');
     } finally {
       setDeletingReportId(null);
     }
