@@ -130,10 +130,10 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
           {/* Photo Upload Section */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">現場照片 <span className="text-red-500">*</span></label>
-            <div 
-              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors
+            <label 
+              htmlFor="photo-upload"
+              className={`block border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors
                 ${photoPreview ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400 bg-gray-50'}`}
-              onClick={() => fileInputRef.current?.click()}
             >
               {photoPreview ? (
                 <div className="relative w-full h-64 sm:h-48 group">
@@ -161,13 +161,14 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
                 </div>
               )}
               <input 
+                id="photo-upload"
                 type="file" 
                 ref={fileInputRef} 
                 onChange={handlePhotoUpload} 
                 accept="image/*" 
                 className="hidden" 
               />
-            </div>
+            </label>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

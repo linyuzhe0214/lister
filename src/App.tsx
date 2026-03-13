@@ -144,6 +144,81 @@ export default function App() {
     }
   };
 
+  const exportToHTML = () => {
+    if (filteredAndSortedReports.length === 0) {
+      alert('沒有資料可供匯出');
+      return;
+    }
+
+    const title = `巡查紀錄匯出_${format(new Date(), 'yyyyMMdd_HHmm')}`;
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    h1 { color: #333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; font-size: 14px; }
+    th { background-color: #f8f9fa; font-weight: bold; }
+    .photo-cell { width: 120px; text-align: center; }
+    .photo-cell img { max-width: 100px; max-height: 80px; border-radius: 4px; border: 1px solid #eee; }
+    @media print {
+      .no-print { display: none; }
+      table { border: 1px solid #000; }
+      th, td { border: 1px solid #000; }
+    }
+  </style>
+</head>
+<body>
+  <h1>國道巡查紀錄報表</h1>
+  <p>產生時間：${format(new Date(), 'yyyy/MM/dd HH:mm')}</p>
+  <div class="no-print" style="margin-bottom: 20px;">
+    <button onclick="window.print()" style="padding: 8px 16px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer;">列印 / 轉存 PDF</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>項次</th>
+        <th>登錄時間</th>
+        <th>位置</th>
+        <th>里程/車道</th>
+        <th>損壞狀況</th>
+        <th>改善方式</th>
+        <th class="photo-cell">現場照片</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filteredAndSortedReports.map((report, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
+          <td>${report.location_type === 'mainline' ? '主線' : '匝道'}<br>${report.highway} ${report.direction}</td>
+          <td>${report.mileage}<br>${report.lane}</td>
+          <td>${report.damage_condition}</td>
+          <td>${report.improvement_method}</td>
+          <td class="photo-cell">
+            ${report.photo ? `<img src="${report.photo}" alt="照片">` : '無照片'}
+          </td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${title}.html`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const exportToCSV = () => {
     if (filteredAndSortedReports.length === 0) {
       alert('沒有資料可供匯出');
@@ -219,12 +294,12 @@ export default function App() {
 
             <div className="flex items-center gap-2">
               <button 
-                onClick={exportToCSV}
+                onClick={exportToHTML}
                 className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl shadow-sm transition-all active:scale-95"
-                title="匯出為 CSV"
+                title="匯出包含照片的 HTML 報表"
               >
                 <Download size={18} />
-                <span className="hidden xs:inline">匯出</span>
+                <span className="hidden xs:inline">匯出 (含照片)</span>
               </button>
               <button 
                 onClick={() => {
