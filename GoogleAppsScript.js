@@ -53,12 +53,31 @@ function doPost(e) {
     if (action === 'create') return createReport(payload.data);
     if (action === 'update') return updateReport(payload.id, payload.data);
     if (action === 'delete') return deleteReport(payload.id);
+    if (action === 'bulkDelete') return bulkDelete(payload.ids);
     if (action === 'getPhoto') return getPhoto(payload.id);
     
     return responseJson({ error: 'Invalid action' }, 400);
   } catch (error) {
     return responseJson({ error: error.toString() }, 500);
   }
+}
+
+function bulkDelete(ids) {
+  const sheet = ensureSheet();
+  const allData = sheet.getDataRange().getValues();
+  if (allData.length <= 1) return responseJson({ success: true });
+  
+  const idIndex = allData[0].indexOf('id');
+  const idsToDelete = ids.map(id => String(id));
+  
+  // To avoid index shifting issues, we delete from bottom to top
+  for (let i = allData.length - 1; i >= 1; i--) {
+    if (idsToDelete.indexOf(String(allData[i][idIndex])) !== -1) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+  
+  return responseJson({ success: true });
 }
 
 function getPhoto(id) {

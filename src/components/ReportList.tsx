@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { MapPin, Trash2, Pencil, X } from 'lucide-react';
+import { MapPin, Trash2, Pencil, X, Camera, CheckSquare, Square, AlertCircle } from 'lucide-react';
 import { Report } from '../types';
 
 interface ReportListProps {
   reports: Report[];
   filter: 'all' | 'mainline' | 'ramp';
   onDelete: (id: number) => void;
+  onBulkDelete: (ids: number[]) => void;
   onEdit: (report: Report) => void;
   onGetPhoto: (id: number) => Promise<string>;
 }
 
-export function ReportList({ reports, filter, onDelete, onEdit, onGetPhoto }: ReportListProps) {
+export function ReportList({ reports, filter, onDelete, onBulkDelete, onEdit, onGetPhoto }: ReportListProps) {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
   const handlePreviewPhoto = async (report: Report) => {
     if (report.photo) {
@@ -38,6 +40,28 @@ export function ReportList({ reports, filter, onDelete, onEdit, onGetPhoto }: Re
     }
   };
 
+  const toggleSelectAll = () => {
+    if (selectedIds.length === reports.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(reports.map(r => r.id!).filter(Boolean));
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`確定要刪除這 ${selectedIds.length} 筆紀錄嗎？`)) {
+      onBulkDelete(selectedIds);
+      setSelectedIds([]);
+    }
+  };
+
   if (reports.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-12 text-center text-gray-500">
@@ -49,81 +73,126 @@ export function ReportList({ reports, filter, onDelete, onEdit, onGetPhoto }: Re
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-100 text-sm font-medium text-gray-500">
-              <th className="p-4 whitespace-nowrap">項次</th>
-              <th className="p-4 whitespace-nowrap">登錄時間</th>
-              <th className="p-4 whitespace-nowrap">位置類型</th>
-              <th className="p-4 whitespace-nowrap">國道/方向</th>
-              <th className="p-4 whitespace-nowrap">
-                {filter === 'mainline' ? '里程' : filter === 'ramp' ? '交流道名稱' : '里程/交流道名稱'}
-              </th>
-              <th className="p-4 whitespace-nowrap">
-                {filter === 'mainline' ? '車道' : filter === 'ramp' ? '出口/入口' : '車道/出入口'}
-              </th>
-              <th className="p-4 min-w-[150px]">損壞狀況</th>
-              <th className="p-4 whitespace-nowrap">改善方式</th>
-              <th className="p-4 whitespace-nowrap">監造審查</th>
-              <th className="p-4 whitespace-nowrap">完成時間</th>
-              <th className="p-4 whitespace-nowrap">現場照片</th>
-              <th className="p-4 whitespace-nowrap text-center">操作</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {reports.map((report, index) => (
-              <tr key={report.id} className="hover:bg-gray-50/50 transition-colors text-sm text-gray-800">
-                <td className="p-4 font-medium text-gray-900">{index + 1}</td>
-                <td className="p-4 whitespace-nowrap">{format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
-                <td className="p-4">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium
-                    ${report.location_type === 'mainline' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {report.location_type === 'mainline' ? '主線' : '匝道'}
-                  </span>
-                </td>
-                <td className="p-4 whitespace-nowrap">{report.highway} {report.direction}</td>
-                <td className="p-4 whitespace-nowrap">{report.mileage}</td>
-                <td className="p-4 whitespace-nowrap">{report.lane}</td>
-                <td className="p-4">{report.damage_condition}</td>
-                <td className="p-4 whitespace-nowrap">{report.improvement_method}</td>
-                <td className="p-4 whitespace-nowrap">{report.supervision_review || '-'}</td>
-                <td className="p-4 whitespace-nowrap">{report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
-                <td className="p-4">
-                  <div 
-                    className="w-16 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
-                    onClick={() => handlePreviewPhoto(report)}
+    <div className="space-y-4">
+      {/* Selection Toolbar */}
+      {selectedIds.length > 0 && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-600 text-white px-2.5 py-1 rounded-full text-xs font-bold">
+              {selectedIds.length} 已選
+            </div>
+            <span className="text-indigo-900 font-medium">個項目</span>
+          </div>
+          <button
+            onClick={handleBulkDelete}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-md transition-all active:scale-95 text-sm font-bold"
+          >
+            <Trash2 size={18} />
+            批次刪除
+          </button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100 text-sm font-medium text-gray-500">
+                <th className="p-4 w-10">
+                  <button 
+                    onClick={toggleSelectAll}
+                    className="text-gray-400 hover:text-indigo-600 transition-colors"
                   >
-                    {report.photo ? (
-                      <img src={report.photo} alt="現場照片" className="w-full h-full object-cover" />
+                    {selectedIds.length === reports.length && reports.length > 0 ? (
+                      <CheckSquare size={20} className="text-indigo-600" />
                     ) : (
-                      <Camera size={18} className="text-gray-400" />
+                      <Square size={20} />
                     )}
-                  </div>
-                </td>
-                <td className="p-4 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <button 
-                      onClick={() => onEdit(report)}
-                      className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      title="編輯紀錄"
-                    >
-                      <Pencil size={18} />
-                    </button>
-                    <button 
-                      onClick={() => report.id && onDelete(report.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="刪除紀錄"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
+                  </button>
+                </th>
+                <th className="p-4 whitespace-nowrap">項次</th>
+                <th className="p-4 whitespace-nowrap">登錄時間</th>
+                <th className="p-4 whitespace-nowrap">位置類型</th>
+                <th className="p-4 whitespace-nowrap">國道/方向</th>
+                <th className="p-4 whitespace-nowrap">
+                  {filter === 'mainline' ? '里程' : filter === 'ramp' ? '交流道名稱' : '里程/交流道名稱'}
+                </th>
+                <th className="p-4 whitespace-nowrap">
+                  {filter === 'mainline' ? '車道' : filter === 'ramp' ? '出口/入口' : '車道/出入口'}
+                </th>
+                <th className="p-4 min-w-[150px]">損壞狀況</th>
+                <th className="p-4 whitespace-nowrap">改善方式</th>
+                <th className="p-4 whitespace-nowrap">監造審查</th>
+                <th className="p-4 whitespace-nowrap">完成時間</th>
+                <th className="p-4 whitespace-nowrap">現場照片</th>
+                <th className="p-4 whitespace-nowrap text-center">操作</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {reports.map((report, index) => (
+                <tr key={report.id} className={`hover:bg-gray-50/50 transition-colors text-sm text-gray-800 ${selectedIds.includes(report.id!) ? 'bg-indigo-50/30' : ''}`}>
+                  <td className="p-4">
+                    <button 
+                      onClick={() => report.id && toggleSelect(report.id)}
+                      className="text-gray-400 hover:text-indigo-600 transition-colors"
+                    >
+                      {selectedIds.includes(report.id!) ? (
+                        <CheckSquare size={20} className="text-indigo-600" />
+                      ) : (
+                        <Square size={20} />
+                      )}
+                    </button>
+                  </td>
+                  <td className="p-4 font-medium text-gray-900">{index + 1}</td>
+                  <td className="p-4 whitespace-nowrap">{format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
+                  <td className="p-4">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium
+                      ${report.location_type === 'mainline' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {report.location_type === 'mainline' ? '主線' : '匝道'}
+                    </span>
+                  </td>
+                  <td className="p-4 whitespace-nowrap">{report.highway} {report.direction}</td>
+                  <td className="p-4 whitespace-nowrap">{report.mileage}</td>
+                  <td className="p-4 whitespace-nowrap">{report.lane}</td>
+                  <td className="p-4">{report.damage_condition}</td>
+                  <td className="p-4 whitespace-nowrap">{report.improvement_method}</td>
+                  <td className="p-4 whitespace-nowrap">{report.supervision_review || '-'}</td>
+                  <td className="p-4 whitespace-nowrap">{report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
+                  <td className="p-4">
+                    <div 
+                      className="w-16 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+                      onClick={() => handlePreviewPhoto(report)}
+                    >
+                      {report.photo ? (
+                        <img src={report.photo} alt="現場照片" className="w-full h-full object-cover" />
+                      ) : (
+                        <Camera size={18} className="text-gray-400" />
+                      )}
+                    </div>
+                  </td>
+                  <td className="p-4 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <button 
+                        onClick={() => onEdit(report)}
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="編輯紀錄"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                      <button 
+                        onClick={() => report.id && onDelete(report.id)}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="刪除紀錄"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Photo Preview Modal */}
