@@ -17,6 +17,7 @@ export default function App() {
   const [filterDamage, setFilterDamage] = useState<string>('all');
   const [globalSearch, setGlobalSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // VITE_GAS_URL will be provided in .env
   const GAS_URL = import.meta.env.VITE_GAS_URL || '';
@@ -84,7 +85,10 @@ export default function App() {
       alert('請先在 .env 設定您的 Google Apps Script 網址 (VITE_GAS_URL)');
       return;
     }
+    if (isSubmitting) return;
+
     try {
+      setIsSubmitting(true);
       const isEditing = !!editingReport;
       const payload = isEditing 
         ? { action: 'update', id: editingReport.id, data }
@@ -100,13 +104,15 @@ export default function App() {
       if (res.ok || res.type === 'opaque') {
         setIsFormOpen(false);
         setEditingReport(null);
-        fetchReports();
+        await fetchReports();
       } else {
         throw new Error('Response not OK');
       }
     } catch (error) {
       console.error('Failed to save report:', error);
       alert('儲存失敗，請稍後再試');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -196,7 +202,7 @@ export default function App() {
               <h1 className="text-xl font-bold text-gray-900 tracking-tight whitespace-nowrap">國道巡查紀錄系統</h1>
             </div>
             
-            <div className="flex-1 max-w-md mx-8">
+            <div className="flex-1 max-w-sm ml-4 hidden sm:block">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search size={18} className="text-gray-400" />
@@ -205,30 +211,30 @@ export default function App() {
                   type="text"
                   value={globalSearch}
                   onChange={(e) => setGlobalSearch(e.target.value)}
-                  placeholder="搜尋國道、方向、里程/交流道、損壞狀況..."
+                  placeholder="搜尋..."
                   className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button 
                 onClick={exportToCSV}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl shadow-sm transition-all active:scale-95"
+                className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl shadow-sm transition-all active:scale-95"
                 title="匯出為 CSV"
               >
                 <Download size={18} />
-                匯出
+                <span className="hidden xs:inline">匯出</span>
               </button>
               <button 
                 onClick={() => {
                   setEditingReport(null);
                   setIsFormOpen(true);
                 }}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-sm transition-all active:scale-95"
+                className="inline-flex items-center gap-2 px-3 sm:px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-sm transition-all active:scale-95"
               >
                 <Plus size={18} />
-                新增紀錄
+                <span className="hidden xs:inline">新增</span>
               </button>
             </div>
           </div>
@@ -316,6 +322,7 @@ export default function App() {
         <ReportForm 
           initialData={editingReport || undefined}
           onSubmit={handleAddReport} 
+          isSubmitting={isSubmitting}
           onCancel={() => {
             setIsFormOpen(false);
             setEditingReport(null);

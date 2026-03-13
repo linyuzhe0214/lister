@@ -8,9 +8,10 @@ interface ReportFormProps {
   initialData?: Report;
   onSubmit: (data: Report) => void;
   onCancel: () => void;
+  isSubmitting?: boolean;
 }
 
-export function ReportForm({ initialData, onSubmit, onCancel }: ReportFormProps) {
+export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: ReportFormProps) {
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<Report>({
     defaultValues: initialData || {
       location_type: 'mainline',
@@ -40,9 +41,37 @@ export function ReportForm({ initialData, onSubmit, onCancel }: ReportFormProps)
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setPhotoPreview(base64String);
-        setValue('photo', base64String);
+        const img = new Image();
+        img.onload = () => {
+          // 壓縮圖片
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_WIDTH = 1000;
+          const MAX_HEIGHT = 1000;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          const base64String = canvas.toDataURL('image/jpeg', 0.6); // 降低質量以縮小體積
+          setPhotoPreview(base64String);
+          setValue('photo', base64String);
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -88,8 +117,8 @@ export function ReportForm({ initialData, onSubmit, onCancel }: ReportFormProps)
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl my-8 overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-none sm:rounded-2xl shadow-xl w-full max-w-2xl min-h-screen sm:min-h-0 overflow-hidden">
         <div className="flex justify-between items-center p-6 border-b border-gray-100">
           <h2 className="text-2xl font-bold text-gray-800">{initialData ? '編輯巡查紀錄' : '新增巡查紀錄'}</h2>
           <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 transition-colors">
@@ -107,7 +136,7 @@ export function ReportForm({ initialData, onSubmit, onCancel }: ReportFormProps)
               onClick={() => fileInputRef.current?.click()}
             >
               {photoPreview ? (
-                <div className="relative w-full h-48 group">
+                <div className="relative w-full h-64 sm:h-48 group">
                   <img src={photoPreview} alt="Preview" className="w-full h-full object-contain rounded-lg" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
                     <p className="text-white font-medium flex items-center gap-2">
@@ -117,17 +146,18 @@ export function ReportForm({ initialData, onSubmit, onCancel }: ReportFormProps)
                   <button
                     type="button"
                     onClick={handleRemovePhoto}
-                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm"
+                    disabled={isSubmitting}
+                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm"
                     title="移除照片"
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               ) : (
-                <div className="py-8 flex flex-col items-center justify-center text-gray-500">
-                  <Upload size={32} className="mb-2 text-gray-400" />
-                  <p className="font-medium">點擊上傳照片</p>
-                  <p className="text-xs text-gray-400 mt-1">支援 JPG, PNG 格式</p>
+                <div className="py-12 sm:py-8 flex flex-col items-center justify-center text-gray-500">
+                  <Upload size={40} className="mb-2 text-gray-400" />
+                  <p className="font-bold text-lg sm:text-base">點擊上傳照片</p>
+                  <p className="text-sm text-gray-400 mt-1">支援 JPG, PNG 格式</p>
                 </div>
               )}
               <input 
@@ -222,9 +252,9 @@ export function ReportForm({ initialData, onSubmit, onCancel }: ReportFormProps)
               <label className="block text-sm font-medium text-gray-700">改善方式</label>
               <select {...register('improvement_method')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white">
                 <option value="優先處理">優先處理</option>
-                <option value="例行性處置">例行性處置</option>
                 <option value="建議刨鋪">建議刨鋪</option>
-                <option value="坑洞緊急處理">坑洞緊急處理</option>
+                <option value="持續觀察">持續觀察</option>
+                <option value="列入年度計畫">列入年度計畫</option>
               </select>
             </div>
 
@@ -244,12 +274,13 @@ export function ReportForm({ initialData, onSubmit, onCancel }: ReportFormProps)
             </div>
           </div>
 
-          <div className="pt-6 flex gap-4 justify-end border-t border-gray-100">
-            <button type="button" onClick={onCancel} className="px-6 py-2 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors">
+          <div className="pt-6 pb-12 sm:pb-6 flex gap-4 justify-end border-t border-gray-100">
+            <button type="button" onClick={onCancel} disabled={isSubmitting} className="px-6 py-2 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">
               取消
             </button>
-            <button type="submit" className="px-6 py-2 rounded-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm">
-              儲存紀錄
+            <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2">
+              {isSubmitting && <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/50 border-t-white"></div>}
+              {isSubmitting ? '正在儲存...' : '儲存紀錄'}
             </button>
           </div>
         </form>
