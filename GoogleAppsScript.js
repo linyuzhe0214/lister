@@ -23,10 +23,17 @@ function doGet(e) {
   if (data.length <= 1) return responseJson([]);
   
   const headers = data.shift();
+  const includePhotos = e.parameter.include_photos === 'true';
+  
   let reports = data.map(row => {
     let obj = {};
     headers.forEach((header, i) => {
-      obj[header] = row[i];
+      // If includePhotos is false, return empty string for photo to save bandwidth
+      if (header === 'photo' && !includePhotos) {
+        obj[header] = ''; 
+      } else {
+        obj[header] = row[i];
+      }
     });
     return obj;
   });
@@ -46,11 +53,27 @@ function doPost(e) {
     if (action === 'create') return createReport(payload.data);
     if (action === 'update') return updateReport(payload.id, payload.data);
     if (action === 'delete') return deleteReport(payload.id);
+    if (action === 'getPhoto') return getPhoto(payload.id);
     
     return responseJson({ error: 'Invalid action' }, 400);
   } catch (error) {
     return responseJson({ error: error.toString() }, 500);
   }
+}
+
+function getPhoto(id) {
+  const sheet = ensureSheet();
+  const allData = sheet.getDataRange().getValues();
+  const headers = allData[0];
+  const idIndex = headers.indexOf('id');
+  const photoIndex = headers.indexOf('photo');
+  
+  for (let i = 1; i < allData.length; i++) {
+    if (String(allData[i][idIndex]) === String(id)) {
+      return responseJson({ photo: allData[i][photoIndex] });
+    }
+  }
+  return responseJson({ error: 'Not found' }, 404);
 }
 
 function createReport(data) {

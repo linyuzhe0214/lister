@@ -18,7 +18,8 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
       improvement_method: '優先處理',
       highway: '國道1號',
       direction: '南下',
-      item_number: '載入中...',
+      // Auto-generate a readable item number based on time to avoid "Loading..." state
+      item_number: format(new Date(), 'yyyyMMddHHmm'),
       log_time: format(new Date(), "yyyy-MM-dd'T'HH:mm")
     }
   });
@@ -117,29 +118,29 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
-      <div className="bg-white rounded-none sm:rounded-2xl shadow-xl w-full max-w-2xl min-h-screen sm:min-h-0 overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-800">{initialData ? '編輯巡查紀錄' : '新增巡查紀錄'}</h2>
-          <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 transition-colors">
+    <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto backdrop-blur-sm">
+      <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl w-full max-w-2xl min-h-screen sm:min-h-0 flex flex-col relative my-0 sm:my-8 transition-all">
+        <div className="sticky top-0 bg-white/95 backdrop-blur-md z-10 flex justify-between items-center p-5 sm:p-6 border-b border-gray-100 rounded-t-none sm:rounded-t-2xl">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{initialData ? '編輯巡查紀錄' : '新增巡查紀錄'}</h2>
+          <button onClick={onCancel} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all">
             <X size={24} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit(submitForm)} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit(submitForm)} className="flex-1 p-5 sm:p-8 space-y-8">
           {/* Photo Upload Section */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">現場照片 <span className="text-red-500">*</span></label>
+          <div className="space-y-3">
+            <label className="block text-sm font-semibold text-gray-700 ml-1">現場照片 <span className="text-red-500">*</span></label>
             <label 
               htmlFor="photo-upload"
-              className={`block border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors
-                ${photoPreview ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400 bg-gray-50'}`}
+              className={`block border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all active:scale-[0.98] relative
+                ${photoPreview ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 hover:border-indigo-400 bg-gray-50/50 hover:bg-white'}`}
             >
               {photoPreview ? (
-                <div className="relative w-full h-64 sm:h-48 group">
-                  <img src={photoPreview} alt="Preview" className="w-full h-full object-contain rounded-lg" />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                    <p className="text-white font-medium flex items-center gap-2">
+                <div className="relative w-full h-72 sm:h-56 group">
+                  <img src={photoPreview} alt="Preview" className="w-full h-full object-contain rounded-xl" />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
+                    <p className="text-white font-medium flex items-center gap-2 bg-black/20 px-4 py-2 rounded-lg backdrop-blur-sm">
                       <Camera size={20} /> 更換照片
                     </p>
                   </div>
@@ -147,17 +148,19 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
                     type="button"
                     onClick={handleRemovePhoto}
                     disabled={isSubmitting}
-                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-sm"
+                    className="absolute top-3 right-3 p-3 bg-red-500 text-white rounded-xl shadow-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 active:scale-90"
                     title="移除照片"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
               ) : (
-                <div className="py-12 sm:py-8 flex flex-col items-center justify-center text-gray-500">
-                  <Upload size={40} className="mb-2 text-gray-400" />
-                  <p className="font-bold text-lg sm:text-base">點擊上傳照片</p>
-                  <p className="text-sm text-gray-400 mt-1">支援 JPG, PNG 格式</p>
+                <div className="py-14 sm:py-10 flex flex-col items-center justify-center text-gray-500 group">
+                  <div className="mb-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100 group-hover:scale-110 transition-transform text-indigo-500">
+                    <Upload size={32} />
+                  </div>
+                  <p className="font-bold text-lg text-gray-900 mb-1">點擊上傳照片</p>
+                  <p className="text-sm text-gray-400">支援拍照或選擇 JPG, PNG 格式</p>
                 </div>
               )}
               <input 
@@ -171,30 +174,40 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
             </label>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
             {/* Location Type */}
-            <div className="space-y-2 md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">位置類型</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" value="mainline" {...register('location_type')} className="w-4 h-4 text-indigo-600" />
-                  <span>主線</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" value="ramp" {...register('location_type')} className="w-4 h-4 text-indigo-600" />
-                  <span>匝道</span>
-                </label>
+            <div className="space-y-3 md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 ml-1">位置類型</label>
+              <div className="flex gap-4 p-1 bg-gray-50 rounded-xl w-fit">
+                <button 
+                  type="button"
+                  onClick={() => setValue('location_type', 'mainline')}
+                  className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all
+                    ${locationType === 'mainline' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <input type="radio" value="mainline" {...register('location_type')} className="hidden" />
+                  主線
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setValue('location_type', 'ramp')}
+                  className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all
+                    ${locationType === 'ramp' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <input type="radio" value="ramp" {...register('location_type')} className="hidden" />
+                  匝道
+                </button>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">登錄時間 <span className="text-red-500">*</span></label>
-              <input type="datetime-local" {...register('log_time', { required: true })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              <label className="block text-sm font-semibold text-gray-700 ml-1">登錄時間 <span className="text-red-500">*</span></label>
+              <input type="datetime-local" {...register('log_time', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" />
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">國道 <span className="text-red-500">*</span></label>
-              <select {...register('highway', { required: true })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white">
+              <label className="block text-sm font-semibold text-gray-700 ml-1">國道 <span className="text-red-500">*</span></label>
+              <select {...register('highway', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer">
                 <option value="國道1號">國道1號</option>
                 <option value="國道3號">國道3號</option>
                 <option value="國道4號">國道4號</option>
@@ -202,8 +215,8 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">方向 <span className="text-red-500">*</span></label>
-              <select {...register('direction', { required: true })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white">
+              <label className="block text-sm font-semibold text-gray-700 ml-1">方向 <span className="text-red-500">*</span></label>
+              <select {...register('direction', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer">
                 <option value="南下">南下</option>
                 <option value="北上">北上</option>
                 <option value="東向">東向</option>
@@ -212,46 +225,46 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700 ml-1">
                 {locationType === 'ramp' ? '交流道名稱' : '里程'} <span className="text-red-500">*</span>
               </label>
               <input 
                 {...register('mileage', { required: true })} 
                 onBlur={locationType === 'mainline' ? handleMileageBlur : undefined}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" 
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" 
                 placeholder={locationType === 'ramp' ? '例如: 圓山交流道' : '例如: 174k+000'} 
                 autoComplete="off"
               />
               {locationType === 'mainline' && (
-                <p className="text-xs text-gray-500">
-                  支援直接輸入 "174k+000" 格式，或輸入純數字 "174000" 離開欄位時將自動轉換
+                <p className="text-xs text-gray-400 mt-1 ml-1 italic">
+                  支援 "174k+000" 或純數字 "174000"
                 </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700 ml-1">
                 {locationType === 'ramp' ? '出口/入口' : '車道'} <span className="text-red-500">*</span>
               </label>
               {locationType === 'ramp' ? (
-                <select {...register('lane', { required: true })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white">
+                <select {...register('lane', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer">
                   <option value="">請選擇</option>
                   <option value="出口">出口</option>
                   <option value="入口">入口</option>
                 </select>
               ) : (
-                <input {...register('lane', { required: true })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="例如: 內側車道" autoComplete="off" />
+                <input {...register('lane', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="例如: 內側車道" autoComplete="off" />
               )}
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">損壞狀況 <span className="text-red-500">*</span></label>
-              <input {...register('damage_condition', { required: true })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="例如: 坑洞、裂縫" />
+              <label className="block text-sm font-semibold text-gray-700 ml-1">損壞狀況 <span className="text-red-500">*</span></label>
+              <input {...register('damage_condition', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="例如: 坑洞、裂縫" />
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">改善方式</label>
-              <select {...register('improvement_method')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white">
+              <label className="block text-sm font-semibold text-gray-700 ml-1">改善方式</label>
+              <select {...register('improvement_method')} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer">
                 <option value="優先處理">優先處理</option>
                 <option value="建議刨鋪">建議刨鋪</option>
                 <option value="持續觀察">持續觀察</option>
@@ -260,28 +273,28 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">監造審查</label>
-              <input {...register('supervision_review')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="審查意見" />
+              <label className="block text-sm font-semibold text-gray-700 ml-1">監造審查</label>
+              <input {...register('supervision_review')} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="審查意見" />
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">後續處理方式</label>
-              <input {...register('follow_up_method')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="例如: 列入年度計畫" />
+              <label className="block text-sm font-semibold text-gray-700 ml-1">後續處理方式</label>
+              <input {...register('follow_up_method')} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="例如: 列入年度計畫" />
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">完成時間</label>
-              <input type="datetime-local" {...register('completion_time')} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
+              <label className="block text-sm font-semibold text-gray-700 ml-1">完成時間</label>
+              <input type="datetime-local" {...register('completion_time')} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" />
             </div>
           </div>
 
-          <div className="pt-6 pb-12 sm:pb-6 flex gap-4 justify-end border-t border-gray-100">
-            <button type="button" onClick={onCancel} disabled={isSubmitting} className="px-6 py-2 rounded-lg font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-50">
+          <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-5 pb-10 sm:pb-6 flex gap-4 justify-end border-t border-gray-100 -mx-5 sm:-mx-8 px-5 sm:px-8">
+            <button type="button" onClick={onCancel} disabled={isSubmitting} className="px-8 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-50">
               取消
             </button>
-            <button type="submit" disabled={isSubmitting} className="px-6 py-2 rounded-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2">
-              {isSubmitting && <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/50 border-t-white"></div>}
-              {isSubmitting ? '正在儲存...' : '儲存紀錄'}
+            <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none px-8 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2">
+              {isSubmitting && <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/50 border-t-white"></div>}
+              {isSubmitting ? '正在儲存...' : (initialData ? '更新紀錄' : '儲存紀錄')}
             </button>
           </div>
         </form>

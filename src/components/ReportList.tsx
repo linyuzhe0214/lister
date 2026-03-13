@@ -8,10 +8,35 @@ interface ReportListProps {
   filter: 'all' | 'mainline' | 'ramp';
   onDelete: (id: number) => void;
   onEdit: (report: Report) => void;
+  onGetPhoto: (id: number) => Promise<string>;
 }
 
-export function ReportList({ reports, filter, onDelete, onEdit }: ReportListProps) {
+export function ReportList({ reports, filter, onDelete, onEdit, onGetPhoto }: ReportListProps) {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  const handlePreviewPhoto = async (report: Report) => {
+    if (report.photo) {
+      setPreviewPhoto(report.photo);
+      return;
+    }
+
+    if (!report.id) return;
+
+    try {
+      setIsPreviewLoading(true);
+      const photo = await onGetPhoto(report.id);
+      if (photo) {
+        setPreviewPhoto(photo);
+        // Update local report object to avoid re-fetching
+        report.photo = photo;
+      } else {
+        alert('無法載入照片');
+      }
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
 
   if (reports.length === 0) {
     return (
@@ -67,10 +92,14 @@ export function ReportList({ reports, filter, onDelete, onEdit }: ReportListProp
                 <td className="p-4 whitespace-nowrap">{report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
                 <td className="p-4">
                   <div 
-                    className="w-16 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => setPreviewPhoto(report.photo)}
+                    className="w-16 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+                    onClick={() => handlePreviewPhoto(report)}
                   >
-                    <img src={report.photo} alt="現場照片" className="w-full h-full object-cover" />
+                    {report.photo ? (
+                      <img src={report.photo} alt="現場照片" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera size={18} className="text-gray-400" />
+                    )}
                   </div>
                 </td>
                 <td className="p-4 text-center">
@@ -113,12 +142,20 @@ export function ReportList({ reports, filter, onDelete, onEdit }: ReportListProp
             >
               <X size={32} />
             </button>
-            <img 
-              src={previewPhoto} 
-              alt="照片預覽" 
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
+            {(previewPhoto || isPreviewLoading) && (
+              <div className="flex flex-col items-center justify-center min-h-[200px]">
+                {isPreviewLoading ? (
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600"></div>
+                ) : (
+                  <img 
+                    src={previewPhoto!} 
+                    alt="照片預覽" 
+                    className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

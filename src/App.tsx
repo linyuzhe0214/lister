@@ -34,14 +34,30 @@ export default function App() {
     }
     try {
       setLoading(true);
-      const res = await fetch(`${GAS_URL}?location_type=${filter}`);
+      // Default to include_photos=false for faster loading
+      const res = await fetch(`${GAS_URL}?location_type=${filter}&include_photos=false`);
       const data = await res.json();
-      // Ensure data is array (in case of error message format)
       setReports(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getReportPhoto = async (id: number): Promise<string> => {
+    if (!GAS_URL) return '';
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'getPhoto', id }),
+      });
+      const data = await res.json();
+      return data.photo || '';
+    } catch (error) {
+      console.error('Failed to fetch photo:', error);
+      return '';
     }
   };
 
@@ -116,7 +132,11 @@ export default function App() {
     }
   };
 
-  const handleEditReport = (report: Report) => {
+  const handleEditReport = async (report: Report) => {
+    if (!report.photo && report.id) {
+      const fullPhoto = await getReportPhoto(report.id);
+      report.photo = fullPhoto;
+    }
     setEditingReport(report);
     setIsFormOpen(true);
   };
@@ -388,7 +408,7 @@ export default function App() {
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600"></div>
           </div>
         ) : (
-          <ReportList reports={filteredAndSortedReports} filter={filter} onDelete={handleDeleteReport} onEdit={handleEditReport} />
+          <ReportList reports={filteredAndSortedReports} filter={filter} onDelete={handleDeleteReport} onEdit={handleEditReport} onGetPhoto={getReportPhoto} />
         )}
       </main>
 
