@@ -249,8 +249,8 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
               <input 
                 type="datetime-local" 
                 {...register('log_time', { required: true })} 
-                className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all ${initialData ? 'bg-gray-200 text-gray-500 cursor-not-allowed pointer-events-none' : 'focus:bg-white'}`} 
-                readOnly={!!initialData} 
+                className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all ${initialData ? 'bg-gray-200 text-gray-500 pointer-events-none' : 'focus:bg-white'}`} 
+                tabIndex={initialData ? -1 : 0}
               />
             </div>
 
