@@ -9,7 +9,7 @@ function ensureSheet() {
     const headers = [
       'id', 'item_number', 'log_time', 'highway', 'direction', 'mileage', 'lane',
       'damage_condition', 'improvement_method', 'supervision_review',
-      'follow_up_method', 'completion_time', 'location_type', 'photo', 'created_at'
+      'follow_up_method', 'completion_time', 'location_type', 'photo', 'coordinates', 'created_at'
     ];
     sheet.appendRow(headers);
     sheet.setFrozenRows(1);

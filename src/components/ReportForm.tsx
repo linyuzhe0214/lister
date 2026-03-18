@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { Camera, Upload, X, Trash2 } from 'lucide-react';
+import { Camera, Upload, X, Trash2, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { Report } from '../types';
 
@@ -38,12 +38,14 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   const locationType = watch('location_type');
   const highway = watch('highway');
   const [prevLocationType, setPrevLocationType] = useState(initialData?.location_type || 'mainline');
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const coordinates = watch('coordinates');
 
   // Define interchange mappings
   const interchanges: Record<string, string[]> = {
     '國道1號': ['豐原交流道(168k)', '大雅系統(172)', '大雅交流道(174k)', '台中交流道(178k)', '南屯交流道(181k)', '王田交流道(189k)'],
     '國道3號': ['和美交流道(191k)', '彰化系統(196k)'],
-    '國道4號': ['后豐交流道(14k)', '豐勢交流道(18k)', '潭子交流道(26k)', '潭子系統(28k)']
+    '國道4號': ['后豐交流道(14k)', '豐勢交流道(17k)', '潭子交流道(26k)', '潭子系統(28k)']
   };
 
   React.useEffect(() => {
@@ -158,12 +160,84 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   return (
     <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto backdrop-blur-sm">
       <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl w-full max-w-2xl min-h-screen sm:min-h-0 flex flex-col relative my-0 sm:my-8 transition-all">
-        <div className="sticky top-0 bg-white/95 backdrop-blur-md z-10 flex justify-between items-center p-5 sm:p-6 border-b border-gray-100 rounded-t-none sm:rounded-t-2xl">
+        <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 flex justify-between items-center p-5 sm:p-6 border-b border-gray-100 rounded-t-none sm:rounded-t-2xl">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{initialData ? '編輯巡查紀錄' : '新增巡查紀錄'}</h2>
           <button onClick={onCancel} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all">
             <X size={24} />
           </button>
         </div>
+
+        {/* Map Picker Modal Overlay */}
+        {showMapPicker && (
+          <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col items-center justify-center p-4">
+            <div className="bg-white w-full max-w-4xl h-[80vh] rounded-2xl overflow-hidden flex flex-col relative">
+              <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                <h3 className="font-bold text-gray-800">在 Google Maps 中標記位置</h3>
+                <button 
+                  type="button" 
+                  onClick={() => setShowMapPicker(false)}
+                  className="p-1 hover:bg-gray-200 rounded-full"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="flex-1 relative bg-gray-100 group">
+                {/* 
+                  Note: In a real environment, we'd use Google Maps JS SDK for a proper picker.
+                  As a workaround for this specific environment, we'll use an iframe to Google Maps 
+                  and prompt the user to copy/paste the coordinates, OR use a mock picker if I can't embed a full interactive one easily.
+                  However, "可以直接連動google map" suggests they want a seamless experience.
+                  Since I can't easily get a click and return coordinates from a simple iframe due to cross-origin, 
+                  I will implement a field where they can "Paste Location" and a button to "Open Google Maps" 
+                  to find coordinates, or try to use a placeholder message explaining how to mark.
+                  
+                  ACTUAL BETTER APPROACH: Use a simple input for coordinates + a button to open Google Maps 
+                  in a new tab to find the spot, or use a simplified embedded map if possible.
+                */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
+                  <MapPin size={48} className="text-indigo-500 mb-4" />
+                  <p className="text-lg font-bold mb-2">請在地圖上找到位置並點擊</p>
+                  <p className="text-gray-500 mb-6">點擊下方按鈕開啟 Google Maps，找到位置後右鍵點擊座標以複製，然後回來貼入下方欄位。</p>
+                  
+                  <div className="w-full max-w-md space-y-4">
+                    <button 
+                      type="button"
+                      onClick={() => window.open('https://www.google.com/maps', '_blank')}
+                      className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all"
+                    >
+                      開啟 Google Maps
+                    </button>
+                    
+                    <div className="relative">
+                      <input 
+                        type="text"
+                        placeholder="在此貼上座標 (例如: 24.123, 120.456)"
+                        className="w-full px-4 py-3 border-2 border-indigo-100 rounded-xl outline-none focus:border-indigo-500 transition-all"
+                        onPaste={(e) => {
+                          const pasted = e.clipboardData.getData('Text');
+                          if (pasted) {
+                            setValue('coordinates', pasted);
+                            setShowMapPicker(false);
+                          }
+                        }}
+                        onChange={(e) => setValue('coordinates', e.target.value)}
+                        value={watch('coordinates') || ''}
+                      />
+                    </div>
+                    
+                    <button 
+                      type="button"
+                      onClick={() => setShowMapPicker(false)}
+                      className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                    >
+                      完成
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(submitForm)} className="flex-1 p-5 sm:p-8 space-y-8">
           {/* Photo Upload Section */}
@@ -322,6 +396,43 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
               ) : (
                 <input {...register('lane', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="例如: 內側車道" autoComplete="off" />
               )}
+            </div>
+
+            {/* Coordinates Section */}
+            <div className={`space-y-3 md:col-span-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
+              <div className="flex justify-between items-center ml-1">
+                <label className="block text-sm font-semibold text-gray-700">詳細位置標記 (Google Maps)</label>
+                {coordinates && (
+                  <button 
+                    type="button"
+                    onClick={() => window.open(`https://www.google.com/maps?q=${coordinates}`, '_blank')}
+                    className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
+                  >
+                    <MapPin size={12} /> 在地圖中預覽
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <input 
+                    {...register('coordinates')}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm"
+                    placeholder="經緯度座標 (例如: 24.123, 120.456)"
+                    readOnly
+                  />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <MapPin size={20} />
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setShowMapPicker(true)}
+                  className="px-4 py-3 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl font-bold hover:bg-indigo-100 transition-all flex items-center gap-2 whitespace-nowrap active:scale-95"
+                >
+                  <MapPin size={18} /> 標記位置
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 ml-1">選填，提供精確的地圖標記位罝</p>
             </div>
 
             <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>

@@ -171,7 +171,20 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                     </span>
                   </td>
                   <td className="p-4 whitespace-nowrap">{report.highway} {report.direction}</td>
-                  <td className="p-4 whitespace-nowrap">{report.mileage}</td>
+                  <td className="p-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      {report.mileage}
+                      {report.coordinates && (
+                        <button 
+                          onClick={() => window.open(`https://www.google.com/maps?q=${report.coordinates}`, '_blank')}
+                          className="text-indigo-600 hover:text-indigo-800 transition-colors"
+                          title="查看地圖位置"
+                        >
+                          <MapPin size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-4 whitespace-nowrap">{report.lane}</td>
                   <td className="p-4">{report.damage_condition}</td>
                   <td className="p-4 whitespace-nowrap">{report.improvement_method}</td>

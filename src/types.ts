@@ -13,6 +13,7 @@ export interface Report {
   completion_time: string;
   location_type: 'mainline' | 'ramp';
   photo: string;
+  coordinates?: string;
   created_at?: string;
   assign_type?: string;
   is_assigned_completed?: boolean;
