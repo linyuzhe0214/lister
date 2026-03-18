@@ -173,13 +173,23 @@ export default function App() {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       });
-      if (res.ok || res.type === 'opaque') {
+      
+      let resData = null;
+      try {
+        resData = await res.json();
+      } catch (e) {
+        // Handle opaque responses or non-json gracefully
+      }
+
+      if ((res.ok || res.type === 'opaque') && (!resData || !resData.error)) {
         localStorage.setItem('reports_cache', JSON.stringify(newReports));
       } else {
-        throw new Error('Update failed');
+        // Rollback on error
+        setReports(originalReports);
+        alert('儲存失敗：' + (resData?.error || '請確定您的 Google Apps Script 已部署為「新版本」'));
       }
-    } catch (error) {
-      console.error('Failed to update report:', error);
+    } catch (err) {
+      console.error('Failed to update report:', err);
       alert('更新失敗');
       setReports(originalReports);
     }
