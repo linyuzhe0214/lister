@@ -88,13 +88,20 @@ export default function App() {
   const uniqueHighways = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.highway))).filter(Boolean), [tabFilteredReports]);
   const uniqueDamages = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.damage_condition))).filter(Boolean), [tabFilteredReports]);
 
-  // Helper function to parse mileage string (e.g. "174k+000") into a number for precise sorting and filtering
+  // Helper function to parse mileage string (e.g. "174k+000", "181") into a number for precise sorting and filtering
   const parseMileage = (m: string) => {
     if (!m) return 0;
     const match = m.match(/(\d+)[kK]\+?(\d+)?/);
     if (match) {
       return parseInt(match[1] || '0') * 1000 + parseInt(match[2] || '0');
     }
+    
+    // If it's just a number like "181", treat it as "181k+000" (181000)
+    const pureNumberMatch = m.match(/^\d+$/);
+    if (pureNumberMatch) {
+      return parseInt(m, 10) * 1000;
+    }
+
     return parseFloat(m.replace(/[^\d.]/g, '')) || 0;
   };
 
