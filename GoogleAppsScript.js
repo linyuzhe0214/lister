@@ -289,6 +289,7 @@ function updateReport(id, data) {
   const rowData = headers.map((header, i) => {
     if (header === 'id') return id;
     if (header === 'created_at') return allData[rowIndex - 1][i] || ''; // Prevent undefined
+    if (header === 'log_time') return allData[rowIndex - 1][i]; // Never overwrite log_time
     if (data[header] !== undefined) return data[header];
     const prevVal = allData[rowIndex - 1][i];
     return prevVal !== undefined ? prevVal : ''; // Prevent undefined causing setValues error

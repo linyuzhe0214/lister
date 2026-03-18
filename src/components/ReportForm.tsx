@@ -30,7 +30,15 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   const [isPhotoLoading, setIsPhotoLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationType = watch('location_type');
+  const highway = watch('highway');
   const [prevLocationType, setPrevLocationType] = useState(initialData?.location_type || 'mainline');
+
+  // Define interchange mappings
+  const interchanges: Record<string, string[]> = {
+    '國道1號': ['豐原交流道(168k)', '大雅系統(172)', '大雅交流道(174k)', '台中交流道(178k)', '南屯交流道(181k)', '王田交流道(189k)'],
+    '國道3號': ['和美交流道(191k)', '彰化系統(196k)'],
+    '國道4號': ['后豐交流道(14k)', '豐勢交流道(18k)', '潭子交流道(26k)', '潭子系統(28k)']
+  };
 
   React.useEffect(() => {
     if (locationType !== prevLocationType) {
@@ -119,6 +127,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   };
 
   const handleMileageBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (locationType !== 'mainline') return;
     let val = e.target.value.trim();
     if (!val) return;
     
@@ -240,7 +249,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
               <input 
                 type="datetime-local" 
                 {...register('log_time', { required: true })} 
-                className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all ${initialData ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'focus:bg-white'}`} 
+                className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all ${initialData ? 'bg-gray-200 text-gray-500 cursor-not-allowed pointer-events-none' : 'focus:bg-white'}`} 
                 readOnly={!!initialData} 
               />
             </div>
@@ -268,17 +277,29 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
               <label className="block text-sm font-semibold text-gray-700 ml-1">
                 {locationType === 'ramp' ? '交流道名稱' : '里程'} <span className="text-red-500">*</span>
               </label>
-              <input 
-                {...register('mileage', { required: true })} 
-                onBlur={locationType === 'mainline' ? handleMileageBlur : undefined}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" 
-                placeholder={locationType === 'ramp' ? '例如: 圓山交流道' : '例如: 174k+000'} 
-                autoComplete="off"
-              />
-              {locationType === 'mainline' && (
-                <p className="text-xs text-gray-400 mt-1 ml-1 italic">
-                  支援 "174k+000" 或純數字 "174000"
-                </p>
+              {locationType === 'ramp' ? (
+                <select 
+                  {...register('mileage', { required: true })} 
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">請選擇交流道</option>
+                  {(interchanges[highway] || []).map(interchange => (
+                     <option key={interchange} value={interchange}>{interchange}</option>
+                  ))}
+                </select>
+              ) : (
+                <>
+                  <input 
+                    {...register('mileage', { required: true })} 
+                    onBlur={handleMileageBlur}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" 
+                    placeholder="例如: 174k+000" 
+                    autoComplete="off"
+                  />
+                  <p className="text-xs text-gray-400 mt-1 ml-1 italic">
+                    支援 "174k+000" 或純數字 "174000"
+                  </p>
+                </>
               )}
             </div>
 
