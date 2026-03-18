@@ -24,6 +24,9 @@ function ensureAssignSheet() {
     sheet = ss.insertSheet('AssignedWorks');
     sheet.appendRow(['id', 'assign_type', 'is_assigned_completed', 'created_at']);
     sheet.setFrozenRows(1);
+  } else if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['id', 'assign_type', 'is_assigned_completed', 'created_at']);
+    sheet.setFrozenRows(1);
   }
   return sheet;
 }
