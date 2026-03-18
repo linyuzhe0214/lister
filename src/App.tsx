@@ -179,7 +179,15 @@ export default function App() {
 
     try {
       const payload = isAssignAction 
-        ? { action: 'assign', id, data: { assign_type: updatedReport.assign_type, is_assigned_completed: updatedReport.is_assigned_completed } }
+        ? { 
+            action: 'assign', 
+            id, 
+            data: { 
+              assign_type: updatedReport.assign_type, 
+              is_assigned_completed: updatedReport.is_assigned_completed,
+              ...(updates.completion_time !== undefined ? { completion_time: updates.completion_time } : {})
+            } 
+          }
         : { action: 'update', id, data: updatedReport };
 
       const res = await fetch(GAS_URL, {
@@ -666,7 +674,10 @@ export default function App() {
             onEdit={handleEditReport}
             onGetPhoto={getReportPhoto}
             onAssign={(id, type) => handleQuickUpdate(id, { assign_type: type, is_assigned_completed: false })}
-            onToggleComplete={(id, completed) => handleQuickUpdate(id, { is_assigned_completed: completed })}
+            onToggleComplete={(id, completed, date) => handleQuickUpdate(id, { 
+              is_assigned_completed: completed,
+              completion_time: date !== undefined ? date : (completed ? undefined : '')
+            })}
           />
         )}
       </main>

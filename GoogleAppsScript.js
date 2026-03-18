@@ -150,6 +150,32 @@ function assignWork(id, data) {
     }
   }
   
+  if (data.completion_time !== undefined) {
+    try {
+      const reportSheet = ensureSheet();
+      const reportData = reportSheet.getDataRange().getValues();
+      const reportHeaders = reportData[0];
+      const reportIdIdx = reportHeaders.indexOf('id');
+      const compTimeIdx = reportHeaders.indexOf('completion_time');
+      
+      if (compTimeIdx !== -1) {
+        let reportRowIdx = -1;
+        for (let i = 1; i < reportData.length; i++) {
+          if (String(reportData[i][reportIdIdx]) === String(id)) {
+            reportRowIdx = i + 1;
+            break;
+          }
+        }
+        
+        if (reportRowIdx !== -1) {
+          reportSheet.getRange(reportRowIdx, compTimeIdx + 1).setValue(data.completion_time);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to sync completion_time to Reports sheet', e);
+    }
+  }
+  
   return responseJson({ success: true, assign_type: data.assign_type, is_assigned_completed: data.is_assigned_completed });
 }
 

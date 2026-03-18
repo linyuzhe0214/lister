@@ -12,7 +12,7 @@ interface ReportListProps {
   onEdit: (report: Report) => void;
   onGetPhoto: (id: number) => Promise<string>;
   onAssign: (id: number, type: string) => void;
-  onToggleComplete: (id: number, completed: boolean) => void;
+  onToggleComplete: (id: number, completed: boolean, date?: string) => void;
 }
 
 export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete, onEdit, onGetPhoto, onAssign, onToggleComplete }: ReportListProps) {
@@ -20,6 +20,8 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [assigningReportId, setAssigningReportId] = useState<number | null>(null);
+  const [completingReportId, setCompletingReportId] = useState<number | null>(null);
+  const [completionDate, setCompletionDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   const handlePreviewPhoto = async (report: Report) => {
     if (report.photo) {
@@ -183,7 +185,16 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                       </td>
                       <td className="p-4 whitespace-nowrap text-center">
                         <button
-                          onClick={() => report.id && onToggleComplete(report.id, !report.is_assigned_completed)}
+                          onClick={() => {
+                            if (report.id) {
+                              if (report.is_assigned_completed) {
+                                onToggleComplete(report.id, false);
+                              } else {
+                                setCompletingReportId(report.id);
+                                setCompletionDate(format(new Date(), 'yyyy-MM-dd'));
+                              }
+                            }
+                          }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
                             report.is_assigned_completed 
                               ? 'bg-green-500 text-white hover:bg-green-600' 
@@ -329,6 +340,52 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
             
             <p className="mt-4 text-xs text-gray-500 text-center">
               派工後此紀錄將會出現在「派工單」頁籤中
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Completion Modal */}
+      {completingReportId !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 transition-opacity">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm relative animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setCompletingReportId(null)} 
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 bg-green-50 text-green-600 rounded-xl">
+                <CheckSquare size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">標示為完成</h3>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">完成日期</label>
+                <input 
+                  type="date" 
+                  value={completionDate}
+                  onChange={(e) => setCompletionDate(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                />
+              </div>
+              
+              <button 
+                onClick={() => { 
+                  onToggleComplete(completingReportId, true, completionDate); 
+                  setCompletingReportId(null); 
+                }} 
+                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all active:scale-[0.98]"
+              >
+                確定完成
+              </button>
+            </div>
+            
+            <p className="mt-4 text-xs text-gray-500 text-center">
+              此日期將直接連動更新至該筆巡查紀錄中
             </p>
           </div>
         </div>
