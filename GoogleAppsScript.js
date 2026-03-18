@@ -20,9 +20,12 @@ function ensureSheet() {
 
 function doGet(e) {
   const sheet = ensureSheet();
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return responseJson([]);
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
   
+  if (lastRow <= 1) return responseJson([]);
+  
+  const data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
   const headers = data.shift();
   const includePhotos = e.parameter.include_photos === 'true';
   
