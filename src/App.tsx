@@ -210,9 +210,9 @@ export default function App() {
         setReports(originalReports);
         alert('儲存失敗：' + (resData?.error || '請確定您的 Google Apps Script 已部署為「新版本」'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update report:', err);
-      alert('更新失敗');
+      alert('更新失敗：' + (err.message || '請稍後再試'));
       setReports(originalReports);
     }
   };
@@ -247,16 +247,23 @@ export default function App() {
         body: JSON.stringify(payload),
       });
       
-      if (res.ok || res.type === 'opaque') {
+      let resData = null;
+      try {
+        resData = await res.json();
+      } catch (e) {
+        // silent
+      }
+      
+      if ((res.ok || res.type === 'opaque') && (!resData || !resData.error)) {
         setEditingReport(null);
         // Refresh silently to get the real ID and updated list
         await fetchReports();
       } else {
-        throw new Error('Response not OK');
+        throw new Error(resData?.error || 'Response not OK');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save report:', error);
-      alert('儲存失敗，請稍後再試');
+      alert('儲存失敗：' + (error.message || '請確認網路狀態與 Google Apps Script 是否部署為最新版本'));
       fetchReports(); // Revert on failure
     } finally {
       setIsSubmitting(false);
