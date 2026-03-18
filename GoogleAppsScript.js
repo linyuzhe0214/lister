@@ -66,21 +66,27 @@ function doPost(e) {
 function syncAssignedWorks() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const mainSheet = ensureSheet();
-  const allData = mainSheet.getDataRange().getValues();
+  // Fetch up to the last header column
+  const lastCol = mainSheet.getLastColumn();
+  const lastRow = mainSheet.getLastRow();
+  if (lastRow === 0 || lastCol === 0) return;
+  
+  const allData = mainSheet.getRange(1, 1, lastRow, lastCol).getValues();
   
   let assignSheet = ss.getSheetByName('AssignedWorks');
   if (!assignSheet) {
     assignSheet = ss.insertSheet('AssignedWorks');
   }
   
-  if (allData.length === 0) return;
-  
   const headers = allData[0];
   const assignTypeIdx = headers.indexOf('assign_type');
+  if (assignTypeIdx === -1) return; // Headers haven't been updated yet
   
   const assignedData = allData.filter((row, i) => {
     if (i === 0) return true; // Keep headers
-    return row[assignTypeIdx] !== undefined && row[assignTypeIdx] !== '';
+    // Prevent out of bounds if row is shorter than headers
+    const typeVal = row[assignTypeIdx];
+    return typeVal !== undefined && typeVal !== null && String(typeVal).trim() !== '';
   });
   
   assignSheet.clear();
@@ -90,9 +96,10 @@ function syncAssignedWorks() {
     
     // Make completed rows green
     const completedIdx = headers.indexOf('is_assigned_completed');
-    if (assignedData.length > 1) {
+    if (completedIdx !== -1 && assignedData.length > 1) {
       for (let i = 1; i < assignedData.length; i++) {
-        if (assignedData[i][completedIdx] === true || assignedData[i][completedIdx] === 'true') {
+        const isCompleted = assignedData[i][completedIdx];
+        if (isCompleted === true || String(isCompleted).toLowerCase() === 'true') {
           assignSheet.getRange(i + 1, 1, 1, assignedData[i].length).setBackground('#d4edda'); // light green
         } else {
           assignSheet.getRange(i + 1, 1, 1, assignedData[i].length).setBackground(null);
