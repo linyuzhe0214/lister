@@ -14,8 +14,14 @@ interface ReportFormProps {
 }
 
 export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGetPhoto, isAssignmentEditMode }: ReportFormProps) {
+  const formattedInitialData = initialData ? {
+    ...initialData,
+    log_time: initialData.log_time ? format(new Date(initialData.log_time), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    completion_time: initialData.completion_time ? format(new Date(initialData.completion_time), "yyyy-MM-dd'T'HH:mm") : ''
+  } : undefined;
+
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<Report>({
-    defaultValues: initialData || {
+    defaultValues: formattedInitialData || {
       location_type: 'mainline',
       improvement_method: '優先處理',
       highway: '國道1號',
