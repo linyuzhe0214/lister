@@ -177,9 +177,10 @@ function updateReport(id, data) {
   
   const rowData = headers.map((header, i) => {
     if (header === 'id') return id;
-    if (header === 'created_at') return allData[rowIndex - 1][i];
+    if (header === 'created_at') return allData[rowIndex - 1][i] || ''; // Prevent undefined
     if (data[header] !== undefined) return data[header];
-    return allData[rowIndex - 1][i];
+    const prevVal = allData[rowIndex - 1][i];
+    return prevVal !== undefined ? prevVal : ''; // Prevent undefined causing setValues error
   });
   
   sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
