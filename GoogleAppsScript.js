@@ -4,15 +4,25 @@ const SHEET_NAME = 'Reports';
 function ensureSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_NAME);
+  const targetHeaders = [
+    'id', 'item_number', 'log_time', 'highway', 'direction', 'mileage', 'lane',
+    'damage_condition', 'improvement_method', 'supervision_review',
+    'follow_up_method', 'completion_time', 'location_type', 'photo', 'coordinates', 'created_at'
+  ];
+
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    const headers = [
-      'id', 'item_number', 'log_time', 'highway', 'direction', 'mileage', 'lane',
-      'damage_condition', 'improvement_method', 'supervision_review',
-      'follow_up_method', 'completion_time', 'location_type', 'photo', 'coordinates', 'created_at'
-    ];
-    sheet.appendRow(headers);
+    sheet.appendRow(targetHeaders);
     sheet.setFrozenRows(1);
+  } else {
+    // Check for missing headers and add them
+    const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const missingHeaders = targetHeaders.filter(h => currentHeaders.indexOf(h) === -1);
+    
+    if (missingHeaders.length > 0) {
+      const lastCol = sheet.getLastColumn();
+      sheet.getRange(1, lastCol + 1, 1, missingHeaders.length).setValues([missingHeaders]);
+    }
   }
   return sheet;
 }
