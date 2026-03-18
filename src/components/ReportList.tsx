@@ -234,11 +234,11 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                         </>
                       ) : (
                         <button 
-                          onClick={() => onEdit(report)}
-                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                          title="查看詳情"
+                          onClick={() => report.id && onDelete(report.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="取消派工"
                         >
-                          <Pencil size={18} />
+                          <Trash2 size={18} />
                         </button>
                       )}
                     </div>

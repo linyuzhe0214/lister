@@ -16,7 +16,8 @@ export default function App() {
   const [sortBy, setSortBy] = useState<'dateDesc' | 'dateAsc' | 'mileageAsc' | 'mileageDesc'>('dateDesc');
   const [filterHighway, setFilterHighway] = useState<string>('all');
   const [filterDamage, setFilterDamage] = useState<string>('all');
-  const [filterMileage, setFilterMileage] = useState<string>('all');
+  const [mileageStart, setMileageStart] = useState<string>('');
+  const [mileageEnd, setMileageEnd] = useState<string>('');
   const [globalSearch, setGlobalSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,8 +114,13 @@ export default function App() {
       result = result.filter(r => r.damage_condition === filterDamage);
     }
 
-    if (filterMileage !== 'all') {
-      result = result.filter(r => r.mileage === filterMileage);
+    if (mileageStart.trim() !== '' || mileageEnd.trim() !== '') {
+      const startParam = mileageStart.trim() ? parseMileage(mileageStart) : -99999999;
+      const endParam = mileageEnd.trim() ? parseMileage(mileageEnd) : 99999999;
+      result = result.filter(r => {
+        const m = parseMileage(r.mileage);
+        return m >= startParam && m <= endParam;
+      });
     }
 
     if (globalSearch.trim() !== '') {
@@ -143,7 +149,7 @@ export default function App() {
     });
 
     return result;
-  }, [tabFilteredReports, filterHighway, filterDamage, filterMileage, sortBy, globalSearch]);
+  }, [tabFilteredReports, filterHighway, filterDamage, mileageStart, mileageEnd, sortBy, globalSearch]);
 
   const handleQuickUpdate = async (id: number, updates: Partial<Report>) => {
     if (!GAS_URL) return;
@@ -151,15 +157,21 @@ export default function App() {
     const targetReport = reports.find(r => r.id === id);
     if (!targetReport) return;
     
+    // For assigning works
+    const isAssignAction = updates.assign_type !== undefined || updates.is_assigned_completed !== undefined;
     const updatedReport = { ...targetReport, ...updates };
     const newReports = reports.map(r => r.id === id ? updatedReport : r);
     setReports(newReports);
 
     try {
+      const payload = isAssignAction 
+        ? { action: 'assign', id, data: { assign_type: updatedReport.assign_type, is_assigned_completed: updatedReport.is_assigned_completed } }
+        : { action: 'update', id, data: updatedReport };
+
       const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'update', id, data: updatedReport }),
+        body: JSON.stringify(payload),
       });
       if (res.ok || res.type === 'opaque') {
         localStorage.setItem('reports_cache', JSON.stringify(newReports));
@@ -237,14 +249,22 @@ export default function App() {
     
     // Optimistic Delete
     const originalReports = [...reports];
-    setReports(reports.filter(r => r.id !== deletingReportId));
+    const isAssignmentDelete = activeTab === 'assignments';
+
+    if (isAssignmentDelete) {
+      setReports(reports.map(r => r.id === deletingReportId ? { ...r, assign_type: undefined, is_assigned_completed: false } : r));
+    } else {
+      setReports(reports.filter(r => r.id !== deletingReportId));
+    }
+    const currentId = deletingReportId;
     setDeletingReportId(null);
 
     try {
+      const actionName = isAssignmentDelete ? 'deleteAssignment' : 'delete';
       const res = await fetch(GAS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'delete', id: deletingReportId }),
+        body: JSON.stringify({ action: actionName, id: currentId }),
       });
       if (res.ok || res.type === 'opaque') {
         localStorage.setItem('reports_cache', JSON.stringify(reports.filter(r => r.id !== deletingReportId)));
@@ -534,13 +554,23 @@ export default function App() {
                 allLabel="所有損壞狀況"
               />
 
-              <SearchableDropdown
-                options={uniqueMileages}
-                value={filterMileage}
-                onChange={setFilterMileage}
-                placeholder="搜尋里程..."
-                allLabel="所有里程"
-              />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <input
+                  type="text"
+                  placeholder="起始里程(如 181k+200)"
+                  value={mileageStart}
+                  onChange={e => setMileageStart(e.target.value)}
+                  className="w-32 sm:w-40 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                />
+                <span className="text-gray-400 text-sm font-medium">至</span>
+                <input
+                  type="text"
+                  placeholder="結束里程(如 183k+200)"
+                  value={mileageEnd}
+                  onChange={e => setMileageEnd(e.target.value)}
+                  className="w-32 sm:w-40 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                />
+              </div>
             </div>
 
             <div className="flex-1"></div>
@@ -598,8 +628,12 @@ export default function App() {
       {deletingReportId !== null && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">確定要刪除這筆紀錄嗎？</h3>
-            <p className="text-gray-500 mb-6">刪除後將無法復原。</p>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              {activeTab === 'assignments' ? '確定要取消此派工嗎？' : '確定要刪除這筆紀錄嗎？'}
+            </h3>
+            <p className="text-gray-500 mb-6">
+              {activeTab === 'assignments' ? '取消派工不會刪除原始巡查紀錄。' : '刪除後將無法復原。'}
+            </p>
             <div className="flex justify-end gap-3">
               <button 
                 onClick={() => setDeletingReportId(null)}
@@ -611,7 +645,7 @@ export default function App() {
                 onClick={confirmDelete}
                 className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
               >
-                確定刪除
+                {activeTab === 'assignments' ? '確定取消派工' : '確定刪除'}
               </button>
             </div>
           </div>

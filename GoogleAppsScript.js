@@ -9,10 +9,20 @@ function ensureSheet() {
     const headers = [
       'id', 'item_number', 'log_time', 'highway', 'direction', 'mileage', 'lane',
       'damage_condition', 'improvement_method', 'supervision_review',
-      'follow_up_method', 'completion_time', 'location_type', 'photo', 'created_at',
-      'assign_type', 'is_assigned_completed'
+      'follow_up_method', 'completion_time', 'location_type', 'photo', 'created_at'
     ];
     sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function ensureAssignSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('AssignedWorks');
+  if (!sheet) {
+    sheet = ss.insertSheet('AssignedWorks');
+    sheet.appendRow(['id', 'assign_type', 'is_assigned_completed', 'created_at']);
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -42,6 +52,32 @@ function doGet(e) {
     return obj;
   });
 
+  // Join AssignedWorks
+  const assignSheet = ensureAssignSheet();
+  const assignLastRow = assignSheet.getLastRow();
+  if (assignLastRow > 1) {
+    const assignData = assignSheet.getRange(2, 1, assignLastRow - 1, assignSheet.getLastColumn()).getValues();
+    const headersAssign = assignSheet.getRange(1, 1, 1, assignSheet.getLastColumn()).getValues()[0];
+    const idIdx = headersAssign.indexOf('id');
+    const typeIdx = headersAssign.indexOf('assign_type');
+    const compIdx = headersAssign.indexOf('is_assigned_completed');
+    
+    const assignMap = {};
+    assignData.forEach(row => {
+      assignMap[String(row[idIdx])] = {
+        assign_type: row[typeIdx],
+        is_assigned_completed: row[compIdx] === true || String(row[compIdx]).toLowerCase() === 'true'
+      };
+    });
+    
+    reports.forEach(r => {
+      if (assignMap[String(r.id)]) {
+        r.assign_type = assignMap[String(r.id)].assign_type;
+        r.is_assigned_completed = assignMap[String(r.id)].is_assigned_completed;
+      }
+    });
+  }
+
   if (e.parameter.location_type && e.parameter.location_type !== 'all') {
     reports = reports.filter(r => r.location_type === e.parameter.location_type);
   }
@@ -59,6 +95,8 @@ function doPost(e) {
     if (action === 'delete') return deleteReport(payload.id);
     if (action === 'bulkDelete') return bulkDelete(payload.ids);
     if (action === 'getPhoto') return getPhoto(payload.id);
+    if (action === 'assign') return assignWork(payload.id, payload.data);
+    if (action === 'deleteAssignment') return deleteAssignment(payload.id);
     
       return responseJson({ error: 'Invalid action' }, 400);
   } catch (error) {
@@ -66,50 +104,70 @@ function doPost(e) {
   }
 }
 
-function syncAssignedWorks() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const mainSheet = ensureSheet();
-  // Fetch up to the last header column
-  const lastCol = mainSheet.getLastColumn();
-  const lastRow = mainSheet.getLastRow();
-  if (lastRow === 0 || lastCol === 0) return;
-  
-  const allData = mainSheet.getRange(1, 1, lastRow, lastCol).getValues();
-  
-  let assignSheet = ss.getSheetByName('AssignedWorks');
-  if (!assignSheet) {
-    assignSheet = ss.insertSheet('AssignedWorks');
-  }
-  
+function assignWork(id, data) {
+  const sheet = ensureAssignSheet();
+  const allData = sheet.getDataRange().getValues();
+  let rowIndex = -1;
   const headers = allData[0];
-  const assignTypeIdx = headers.indexOf('assign_type');
-  if (assignTypeIdx === -1) return; // Headers haven't been updated yet
+  const idIndex = headers.indexOf('id');
   
-  const assignedData = allData.filter((row, i) => {
-    if (i === 0) return true; // Keep headers
-    // Prevent out of bounds if row is shorter than headers
-    const typeVal = row[assignTypeIdx];
-    return typeVal !== undefined && typeVal !== null && String(typeVal).trim() !== '';
-  });
-  
-  assignSheet.clear();
-  if (assignedData.length > 0) {
-    assignSheet.getRange(1, 1, assignedData.length, assignedData[0].length).setValues(assignedData);
-    assignSheet.setFrozenRows(1);
-    
-    // Make completed rows green
-    const completedIdx = headers.indexOf('is_assigned_completed');
-    if (completedIdx !== -1 && assignedData.length > 1) {
-      for (let i = 1; i < assignedData.length; i++) {
-        const isCompleted = assignedData[i][completedIdx];
-        if (isCompleted === true || String(isCompleted).toLowerCase() === 'true') {
-          assignSheet.getRange(i + 1, 1, 1, assignedData[i].length).setBackground('#d4edda'); // light green
-        } else {
-          assignSheet.getRange(i + 1, 1, 1, assignedData[i].length).setBackground(null);
-        }
+  if (allData.length > 1) {
+    for (let i = 1; i < allData.length; i++) {
+      if (String(allData[i][idIndex]) === String(id)) {
+        rowIndex = i + 1;
+        break;
       }
     }
   }
+  
+  if (rowIndex === -1) {
+    const rowData = headers.map(header => {
+      if (header === 'id') return id;
+      if (header === 'created_at') return new Date().toISOString();
+      return data[header] !== undefined ? data[header] : '';
+    });
+    sheet.appendRow(rowData);
+    const compIdx = headers.indexOf('is_assigned_completed');
+    if (data.is_assigned_completed === true || String(data.is_assigned_completed).toLowerCase() === 'true') {
+      sheet.getRange(sheet.getLastRow(), 1, 1, headers.length).setBackground('#d4edda');
+    }
+  } else {
+    const rowData = headers.map((header, i) => {
+      if (header === 'id') return id;
+      if (data[header] !== undefined) return data[header];
+      return allData[rowIndex - 1][i] !== undefined ? allData[rowIndex - 1][i] : '';
+    });
+    sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+    const compIdx = headers.indexOf('is_assigned_completed');
+    if (rowData[compIdx] === true || String(rowData[compIdx]).toLowerCase() === 'true') {
+      sheet.getRange(rowIndex, 1, 1, rowData.length).setBackground('#d4edda');
+    } else {
+      sheet.getRange(rowIndex, 1, 1, rowData.length).setBackground(null);
+    }
+  }
+  
+  return responseJson({ success: true, assign_type: data.assign_type, is_assigned_completed: data.is_assigned_completed });
+}
+
+function deleteAssignment(id) {
+  const sheet = ensureAssignSheet();
+  const allData = sheet.getDataRange().getValues();
+  if (allData.length <= 1) return responseJson({ success: true });
+  
+  const idIndex = allData[0].indexOf('id');
+  let rowIndex = -1;
+  for (let i = 1; i < allData.length; i++) {
+    if (String(allData[i][idIndex]) === String(id)) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+  
+  if (rowIndex !== -1) {
+    sheet.deleteRow(rowIndex);
+  }
+  
+  return responseJson({ success: true });
 }
 
 function bulkDelete(ids) {
@@ -127,7 +185,9 @@ function bulkDelete(ids) {
     }
   }
   
-  syncAssignedWorks();
+  // Optional: Also bulk delete from AssignedWorks if desired, but user said deleting assignment doesn't delete record. 
+  // We'll leave the assigned record intact or dangling, which is fine since join handles it.
+  
   return responseJson({ success: true });
 }
 
@@ -157,7 +217,6 @@ function createReport(data) {
     return data[header] !== undefined ? data[header] : '';
   });
   sheet.appendRow(rowData);
-  syncAssignedWorks();
   return responseJson({ id: id, ...data });
 }
 
@@ -187,7 +246,6 @@ function updateReport(id, data) {
   });
   
   sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
-  syncAssignedWorks();
   return responseJson({ success: true });
 }
 
@@ -208,7 +266,9 @@ function deleteReport(id) {
   if (rowIndex === -1) return responseJson({ error: 'Report not found' }, 404);
   
   sheet.deleteRow(rowIndex);
-  syncAssignedWorks();
+  // Also delete assignment
+  deleteAssignment(id);
+  
   return responseJson({ success: true });
 }
 
