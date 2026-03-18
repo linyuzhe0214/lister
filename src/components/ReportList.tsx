@@ -177,7 +177,9 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                   {activeTab === 'assignments' && (
                     <>
                       <td className="p-4 whitespace-nowrap">
-                        <span className="font-medium text-indigo-700">{report.assign_type || '-'}</span>
+                        <span className={`font-bold ${report.assign_type === '熱料刨鋪' ? 'text-red-500' : report.assign_type === '冷料修補' ? 'text-blue-500' : 'text-indigo-700'}`}>
+                          {report.assign_type || '-'}
+                        </span>
                       </td>
                       <td className="p-4 whitespace-nowrap text-center">
                         <button

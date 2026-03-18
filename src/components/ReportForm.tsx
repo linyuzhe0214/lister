@@ -9,9 +9,11 @@ interface ReportFormProps {
   onSubmit: (data: Report) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
+  onGetPhoto?: (id: number) => Promise<string>;
+  isAssignmentEditMode?: boolean;
 }
 
-export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: ReportFormProps) {
+export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGetPhoto, isAssignmentEditMode }: ReportFormProps) {
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<Report>({
     defaultValues: initialData || {
       location_type: 'mainline',
@@ -25,17 +27,38 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
   });
   
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.photo || null);
+  const [isPhotoLoading, setIsPhotoLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationType = watch('location_type');
   const [prevLocationType, setPrevLocationType] = useState(initialData?.location_type || 'mainline');
 
   React.useEffect(() => {
     if (locationType !== prevLocationType) {
-      setValue('mileage', '');
-      setValue('lane', '');
+      if (!isAssignmentEditMode) {
+        setValue('mileage', '');
+        setValue('lane', '');
+      }
       setPrevLocationType(locationType);
     }
-  }, [locationType, prevLocationType, setValue]);
+  }, [locationType, prevLocationType, setValue, isAssignmentEditMode]);
+
+  React.useEffect(() => {
+    const fetchPhoto = async () => {
+      if (initialData?.id && !initialData.photo && onGetPhoto) {
+        setIsPhotoLoading(true);
+        try {
+          const photo = await onGetPhoto(initialData.id);
+          if (photo) {
+            setPhotoPreview(photo);
+            setValue('photo', photo);
+          }
+        } finally {
+          setIsPhotoLoading(false);
+        }
+      }
+    };
+    fetchPhoto();
+  }, [initialData, onGetPhoto, setValue]);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -136,23 +159,34 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
               className={`block border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all active:scale-[0.98] relative
                 ${photoPreview ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 hover:border-indigo-400 bg-gray-50/50 hover:bg-white'}`}
             >
-              {photoPreview ? (
+              {photoPreview || isPhotoLoading ? (
                 <div className="relative w-full h-72 sm:h-56 group">
-                  <img src={photoPreview} alt="Preview" className="w-full h-full object-contain rounded-xl" />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
-                    <p className="text-white font-medium flex items-center gap-2 bg-black/20 px-4 py-2 rounded-lg backdrop-blur-sm">
-                      <Camera size={20} /> 更換照片
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRemovePhoto}
-                    disabled={isSubmitting}
-                    className="absolute top-3 right-3 p-3 bg-red-500 text-white rounded-xl shadow-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 active:scale-90"
-                    title="移除照片"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  {isPhotoLoading ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 rounded-xl">
+                      <div className="animate-spin rounded-full h-10 w-10 border-4 border-indigo-200 border-t-indigo-600 mb-2"></div>
+                      <span className="text-sm text-gray-500 font-medium">載入照片中...</span>
+                    </div>
+                  ) : (
+                    <img src={photoPreview || ''} alt="Preview" className="w-full h-full object-contain rounded-xl" />
+                  )}
+                  {!isAssignmentEditMode && !isPhotoLoading && (
+                    <>
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
+                        <p className="text-white font-medium flex items-center gap-2 bg-black/20 px-4 py-2 rounded-lg backdrop-blur-sm">
+                          <Camera size={20} /> 更換照片
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        disabled={isSubmitting}
+                        className="absolute top-3 right-3 p-3 bg-red-500 text-white rounded-xl shadow-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 active:scale-90"
+                        title="移除照片"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="py-14 sm:py-10 flex flex-col items-center justify-center text-gray-500 group">
@@ -170,13 +204,14 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
                 onChange={handlePhotoUpload} 
                 accept="image/*" 
                 className="hidden" 
+                disabled={isAssignmentEditMode}
               />
             </label>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
             {/* Location Type */}
-            <div className="space-y-3 md:col-span-2">
+            <div className={`space-y-3 md:col-span-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
               <label className="block text-sm font-semibold text-gray-700 ml-1">位置類型</label>
               <div className="flex gap-4 p-1 bg-gray-50 rounded-xl w-fit">
                 <button 
@@ -202,10 +237,15 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
 
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700 ml-1">登錄時間 <span className="text-red-500">*</span></label>
-              <input type="datetime-local" {...register('log_time', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" />
+              <input 
+                type="datetime-local" 
+                {...register('log_time', { required: true })} 
+                className={`w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all ${initialData ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'focus:bg-white'}`} 
+                readOnly={!!initialData} 
+              />
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
               <label className="block text-sm font-semibold text-gray-700 ml-1">國道 <span className="text-red-500">*</span></label>
               <select {...register('highway', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer">
                 <option value="國道1號">國道1號</option>
@@ -214,7 +254,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
               </select>
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
               <label className="block text-sm font-semibold text-gray-700 ml-1">方向 <span className="text-red-500">*</span></label>
               <select {...register('direction', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer">
                 <option value="南下">南下</option>
@@ -224,7 +264,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
               </select>
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
               <label className="block text-sm font-semibold text-gray-700 ml-1">
                 {locationType === 'ramp' ? '交流道名稱' : '里程'} <span className="text-red-500">*</span>
               </label>
@@ -242,7 +282,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
               <label className="block text-sm font-semibold text-gray-700 ml-1">
                 {locationType === 'ramp' ? '出口/入口' : '車道'} <span className="text-red-500">*</span>
               </label>
@@ -257,12 +297,12 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
               <label className="block text-sm font-semibold text-gray-700 ml-1">損壞狀況 <span className="text-red-500">*</span></label>
               <input {...register('damage_condition', { required: true })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="例如: 坑洞、裂縫" />
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
               <label className="block text-sm font-semibold text-gray-700 ml-1">改善方式</label>
               <select {...register('improvement_method')} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all appearance-none cursor-pointer">
                 <option value="優先處理">優先處理</option>
@@ -272,12 +312,12 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting }: Re
               </select>
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
               <label className="block text-sm font-semibold text-gray-700 ml-1">監造審查</label>
               <input {...register('supervision_review')} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="審查意見" />
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
               <label className="block text-sm font-semibold text-gray-700 ml-1">後續處理方式</label>
               <input {...register('follow_up_method')} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all" placeholder="例如: 列入年度計畫" />
             </div>

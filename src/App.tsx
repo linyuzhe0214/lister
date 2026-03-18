@@ -16,11 +16,13 @@ export default function App() {
   const [sortBy, setSortBy] = useState<'dateDesc' | 'dateAsc' | 'mileageAsc' | 'mileageDesc'>('dateDesc');
   const [filterHighway, setFilterHighway] = useState<string>('all');
   const [filterDamage, setFilterDamage] = useState<string>('all');
+  const [filterAssignType, setFilterAssignType] = useState<string>('all');
   const [mileageStart, setMileageStart] = useState<string>('');
   const [mileageEnd, setMileageEnd] = useState<string>('');
   const [globalSearch, setGlobalSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // VITE_GAS_URL will be provided in .env
   const GAS_URL = import.meta.env.VITE_GAS_URL || '';
@@ -87,6 +89,7 @@ export default function App() {
 
   const uniqueHighways = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.highway))).filter(Boolean), [tabFilteredReports]);
   const uniqueDamages = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.damage_condition))).filter(Boolean), [tabFilteredReports]);
+  const uniqueAssignTypes = useMemo(() => Array.from(new Set(reports.map(r => r.assign_type))).filter(Boolean) as string[], [reports]);
 
   // Helper function to parse mileage string (e.g. "174k+000", "181") into a number for precise sorting and filtering
   const parseMileage = (m: string) => {
@@ -130,15 +133,19 @@ export default function App() {
       });
     }
 
+    if (activeTab === 'assignments' && filterAssignType !== 'all') {
+      result = result.filter(r => r.assign_type === filterAssignType);
+    }
+
     if (globalSearch.trim() !== '') {
       const searchLower = globalSearch.toLowerCase();
       result = result.filter(r => 
-        (r.highway && r.highway.toLowerCase().includes(searchLower)) ||
-        (r.direction && r.direction.toLowerCase().includes(searchLower)) ||
-        (r.damage_condition && r.damage_condition.toLowerCase().includes(searchLower)) ||
-        (r.improvement_method && r.improvement_method.toLowerCase().includes(searchLower)) ||
-        (r.mileage && r.mileage.toLowerCase().includes(searchLower)) ||
-        (r.lane && r.lane.toLowerCase().includes(searchLower))
+        (r.highway && String(r.highway).toLowerCase().includes(searchLower)) ||
+        (r.direction && String(r.direction).toLowerCase().includes(searchLower)) ||
+        (r.damage_condition && String(r.damage_condition).toLowerCase().includes(searchLower)) ||
+        (r.improvement_method && String(r.improvement_method).toLowerCase().includes(searchLower)) ||
+        (r.mileage && String(r.mileage).toLowerCase().includes(searchLower)) ||
+        (r.lane && String(r.lane).toLowerCase().includes(searchLower))
       );
     }
 
@@ -156,7 +163,7 @@ export default function App() {
     });
 
     return result;
-  }, [tabFilteredReports, filterHighway, filterDamage, mileageStart, mileageEnd, sortBy, globalSearch]);
+  }, [tabFilteredReports, filterHighway, filterDamage, filterAssignType, mileageStart, mileageEnd, sortBy, globalSearch, activeTab]);
 
   const handleQuickUpdate = async (id: number, updates: Partial<Report>) => {
     if (!GAS_URL) return;
@@ -248,11 +255,7 @@ export default function App() {
     }
   };
 
-  const handleEditReport = async (report: Report) => {
-    if (!report.photo && report.id) {
-      const fullPhoto = await getReportPhoto(report.id);
-      report.photo = fullPhoto;
-    }
+  const handleEditReport = (report: Report) => {
     setEditingReport(report);
     setIsFormOpen(true);
   };
@@ -321,14 +324,40 @@ export default function App() {
     }
   };
 
-  const exportToHTML = () => {
+  const exportToHTML = async () => {
     if (filteredAndSortedReports.length === 0) {
       alert('沒有資料可供匯出');
       return;
     }
 
-    const title = `巡查紀錄匯出_${format(new Date(), 'yyyyMMdd_HHmm')}`;
-    const htmlContent = `
+    setIsExporting(true);
+    try {
+      const missingPhotoIds = filteredAndSortedReports.filter(r => !r.photo && r.id).map(r => r.id!);
+      let photoMap: Record<string, string> = {};
+
+      if (missingPhotoIds.length > 0 && GAS_URL) {
+        try {
+          const res = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'getPhotos', ids: missingPhotoIds }),
+          });
+          const data = await res.json();
+          if (data && !data.error) {
+            photoMap = data;
+          }
+        } catch (e) {
+          console.error('Failed to pre-fetch photos for export', e);
+        }
+      }
+
+      const exportData = filteredAndSortedReports.map(report => ({
+        ...report,
+        photo: report.photo || (report.id ? photoMap[String(report.id)] : '') || ''
+      }));
+
+      const title = `巡查紀錄匯出_${format(new Date(), 'yyyyMMdd_HHmm')}`;
+      const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -369,7 +398,7 @@ export default function App() {
       </tr>
     </thead>
     <tbody>
-      ${filteredAndSortedReports.map((report, index) => `
+      ${exportData.map((report, index) => `
         <tr>
           <td>${index + 1}</td>
           <td>${format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
@@ -391,14 +420,17 @@ export default function App() {
 </body>
 </html>`;
 
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${title}.html`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${title}.html`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const exportToCSV = () => {
@@ -486,11 +518,12 @@ export default function App() {
             <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
               <button 
                 onClick={exportToHTML}
-                className="p-2 sm:px-4 sm:py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl shadow-sm transition-all active:scale-95 flex items-center gap-2"
+                disabled={isExporting}
+                className="p-2 sm:px-4 sm:py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl shadow-sm transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
                 title="匯出含照片報表"
               >
-                <Download size={20} />
-                <span className="hidden md:inline font-bold">匯出</span>
+                {isExporting ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-200 border-t-indigo-600"></div> : <Download size={20} />}
+                <span className="hidden md:inline font-bold">{isExporting ? '載入中' : '匯出'}</span>
               </button>
               <button 
                 onClick={() => {
@@ -571,6 +604,16 @@ export default function App() {
                 allLabel="所有損壞狀況"
               />
 
+              {activeTab === 'assignments' && (
+                <SearchableDropdown
+                  options={uniqueAssignTypes}
+                  value={filterAssignType}
+                  onChange={setFilterAssignType}
+                  placeholder="搜尋派工項目..."
+                  allLabel="所有派工項目"
+                />
+              )}
+
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <input
                   type="text"
@@ -634,6 +677,8 @@ export default function App() {
           initialData={editingReport || undefined}
           onSubmit={handleAddReport} 
           isSubmitting={isSubmitting}
+          onGetPhoto={getReportPhoto}
+          isAssignmentEditMode={activeTab === 'assignments'}
           onCancel={() => {
             setIsFormOpen(false);
             setEditingReport(null);

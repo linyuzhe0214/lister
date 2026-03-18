@@ -98,10 +98,11 @@ function doPost(e) {
     if (action === 'delete') return deleteReport(payload.id);
     if (action === 'bulkDelete') return bulkDelete(payload.ids);
     if (action === 'getPhoto') return getPhoto(payload.id);
+    if (action === 'getPhotos') return getPhotos(payload.ids);
     if (action === 'assign') return assignWork(payload.id, payload.data);
     if (action === 'deleteAssignment') return deleteAssignment(payload.id);
     
-      return responseJson({ error: 'Invalid action' }, 400);
+    return responseJson({ error: 'Invalid action' }, 400);
   } catch (error) {
     return responseJson({ error: error.toString() }, 500);
   }
@@ -207,6 +208,25 @@ function getPhoto(id) {
     }
   }
   return responseJson({ error: 'Not found' }, 404);
+}
+
+function getPhotos(ids) {
+  const sheet = ensureSheet();
+  const allData = sheet.getDataRange().getValues();
+  const headers = allData[0];
+  const idIndex = headers.indexOf('id');
+  const photoIndex = headers.indexOf('photo');
+  
+  const idsStrings = (ids || []).map(String);
+  const result = {};
+  
+  for (let i = 1; i < allData.length; i++) {
+    const rowId = String(allData[i][idIndex]);
+    if (idsStrings.indexOf(rowId) !== -1) {
+      result[rowId] = allData[i][photoIndex];
+    }
+  }
+  return responseJson(result);
 }
 
 function createReport(data) {
