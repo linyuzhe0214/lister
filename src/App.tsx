@@ -192,27 +192,16 @@ export default function App() {
 
       const res = await fetch(GAS_URL, {
         method: 'POST',
+        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       });
       
-      let resData = null;
-      try {
-        resData = await res.json();
-      } catch (e) {
-        // Handle opaque responses or non-json gracefully
-      }
-
-      if ((res.ok || res.type === 'opaque') && (!resData || !resData.error)) {
-        localStorage.setItem('reports_cache', JSON.stringify(newReports));
-      } else {
-        // Rollback on error
-        setReports(originalReports);
-        alert('儲存失敗：' + (resData?.error || '請確定您的 Google Apps Script 已部署為「新版本」'));
-      }
+      // With mode: 'no-cors', the response is opaque. We assume success unless an exception occurs.
+      localStorage.setItem('reports_cache', JSON.stringify(newReports));
     } catch (err: any) {
       console.error('Failed to update report:', err);
-      alert('更新失敗：' + (err.message || '請稍後再試'));
+      alert('更新失敗：' + (err.message || '請重新整理網頁再試一次'));
       setReports(originalReports);
     }
   };
@@ -243,24 +232,14 @@ export default function App() {
 
       const res = await fetch(GAS_URL, {
         method: 'POST',
+        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       });
       
-      let resData = null;
-      try {
-        resData = await res.json();
-      } catch (e) {
-        // silent
-      }
-      
-      if ((res.ok || res.type === 'opaque') && (!resData || !resData.error)) {
-        setEditingReport(null);
-        // Refresh silently to get the real ID and updated list
-        await fetchReports();
-      } else {
-        throw new Error(resData?.error || 'Response not OK');
-      }
+      // Since it's no-cors, we refresh anyway.
+      setEditingReport(null);
+      await fetchReports();
     } catch (error: any) {
       console.error('Failed to save report:', error);
       alert('儲存失敗：' + (error.message || '請確認網路狀態與 Google Apps Script 是否部署為最新版本'));
@@ -298,14 +277,11 @@ export default function App() {
       const actionName = isAssignmentDelete ? 'deleteAssignment' : 'delete';
       const res = await fetch(GAS_URL, {
         method: 'POST',
+        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: actionName, id: currentId }),
       });
-      if (res.ok || res.type === 'opaque') {
-        localStorage.setItem('reports_cache', JSON.stringify(reports.filter(r => r.id !== deletingReportId)));
-      } else {
-        throw new Error('Delete failed');
-      }
+      localStorage.setItem('reports_cache', JSON.stringify(reports.filter(r => r.id !== deletingReportId)));
     } catch (error) {
       console.error('Failed to delete report:', error);
       alert('刪除失敗');
@@ -323,15 +299,12 @@ export default function App() {
     try {
       const res = await fetch(GAS_URL, {
         method: 'POST',
+        mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'bulkDelete', ids }),
       });
-      if (res.ok || res.type === 'opaque') {
-        const remainingReports = reports.filter(r => !ids.includes(r.id!));
-        localStorage.setItem('reports_cache', JSON.stringify(remainingReports));
-      } else {
-        throw new Error('Bulk delete failed');
-      }
+      const remainingReports = reports.filter(r => !ids.includes(r.id!));
+      localStorage.setItem('reports_cache', JSON.stringify(remainingReports));
     } catch (error) {
       console.error('Failed to bulk delete reports:', error);
       alert('批次刪除失敗');
