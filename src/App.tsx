@@ -11,10 +11,12 @@ export default function App() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
   const [deletingReportId, setDeletingReportId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'reports' | 'assignments'>('reports');
   const [filter, setFilter] = useState<'all' | 'mainline' | 'ramp'>('all');
-  const [sortByDate, setSortByDate] = useState<'desc' | 'asc'>('desc');
+  const [sortBy, setSortBy] = useState<'dateDesc' | 'dateAsc' | 'mileageAsc' | 'mileageDesc'>('dateDesc');
   const [filterHighway, setFilterHighway] = useState<string>('all');
   const [filterDamage, setFilterDamage] = useState<string>('all');
+  const [filterMileage, setFilterMileage] = useState<string>('all');
   const [globalSearch, setGlobalSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,11 +77,33 @@ export default function App() {
     }
   };
 
-  const uniqueHighways = useMemo(() => Array.from(new Set(reports.map(r => r.highway))).filter(Boolean), [reports]);
-  const uniqueDamages = useMemo(() => Array.from(new Set(reports.map(r => r.damage_condition))).filter(Boolean), [reports]);
+  const tabFilteredReports = useMemo(() => {
+    if (activeTab === 'assignments') {
+      return reports.filter(r => !!r.assign_type);
+    }
+    return reports;
+  }, [reports, activeTab]);
+
+  const uniqueHighways = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.highway))).filter(Boolean), [tabFilteredReports]);
+  const uniqueDamages = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.damage_condition))).filter(Boolean), [tabFilteredReports]);
+
+  // Helper function to parse mileage string (e.g. "174k+000") into a number for precise sorting and filtering
+  const parseMileage = (m: string) => {
+    if (!m) return 0;
+    const match = m.match(/(\d+)[kK]\+?(\d+)?/);
+    if (match) {
+      return parseInt(match[1] || '0') * 1000 + parseInt(match[2] || '0');
+    }
+    return parseFloat(m.replace(/[^\d.]/g, '')) || 0;
+  };
+
+  const uniqueMileages = useMemo(() => Array.from(new Set<string>(tabFilteredReports.map(r => r.mileage)))
+    .filter(Boolean)
+    .sort((a, b) => parseMileage(a) - parseMileage(b)), 
+  [tabFilteredReports]);
 
   const filteredAndSortedReports = useMemo(() => {
-    let result = [...reports];
+    let result = [...tabFilteredReports];
 
     if (filterHighway !== 'all') {
       result = result.filter(r => r.highway === filterHighway);
@@ -87,6 +111,10 @@ export default function App() {
 
     if (filterDamage !== 'all') {
       result = result.filter(r => r.damage_condition === filterDamage);
+    }
+
+    if (filterMileage !== 'all') {
+      result = result.filter(r => r.mileage === filterMileage);
     }
 
     if (globalSearch.trim() !== '') {
@@ -102,13 +130,48 @@ export default function App() {
     }
 
     result.sort((a, b) => {
-      const dateA = new Date(a.log_time).getTime();
-      const dateB = new Date(b.log_time).getTime();
-      return sortByDate === 'desc' ? dateB - dateA : dateA - dateB;
+      if (sortBy === 'dateDesc') {
+        return new Date(b.log_time).getTime() - new Date(a.log_time).getTime();
+      } else if (sortBy === 'dateAsc') {
+        return new Date(a.log_time).getTime() - new Date(b.log_time).getTime();
+      } else if (sortBy === 'mileageAsc') {
+        return parseMileage(a.mileage) - parseMileage(b.mileage);
+      } else if (sortBy === 'mileageDesc') {
+        return parseMileage(b.mileage) - parseMileage(a.mileage);
+      }
+      return 0;
     });
 
     return result;
-  }, [reports, filterHighway, filterDamage, sortByDate, globalSearch]);
+  }, [tabFilteredReports, filterHighway, filterDamage, filterMileage, sortBy, globalSearch]);
+
+  const handleQuickUpdate = async (id: number, updates: Partial<Report>) => {
+    if (!GAS_URL) return;
+    const originalReports = [...reports];
+    const targetReport = reports.find(r => r.id === id);
+    if (!targetReport) return;
+    
+    const updatedReport = { ...targetReport, ...updates };
+    const newReports = reports.map(r => r.id === id ? updatedReport : r);
+    setReports(newReports);
+
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'update', id, data: updatedReport }),
+      });
+      if (res.ok || res.type === 'opaque') {
+        localStorage.setItem('reports_cache', JSON.stringify(newReports));
+      } else {
+        throw new Error('Update failed');
+      }
+    } catch (error) {
+      console.error('Failed to update report:', error);
+      alert('更新失敗');
+      setReports(originalReports);
+    }
+  };
 
   const handleAddReport = async (data: Report) => {
     if (!GAS_URL) {
@@ -264,6 +327,7 @@ export default function App() {
         <th>里程/車道</th>
         <th>損壞狀況</th>
         <th>改善方式</th>
+        ${activeTab === 'assignments' ? '<th>派工項目</th><th>完成狀態</th>' : ''}
         <th class="photo-cell">現場照片</th>
       </tr>
     </thead>
@@ -276,6 +340,10 @@ export default function App() {
           <td>${report.mileage}<br>${report.lane}</td>
           <td>${report.damage_condition}</td>
           <td>${report.improvement_method}</td>
+          ${activeTab === 'assignments' ? `
+            <td>${report.assign_type || '-'}</td>
+            <td>${report.is_assigned_completed ? '已完成' : '未完成'}</td>
+          ` : ''}
           <td class="photo-cell">
             ${report.photo ? `<img src="${report.photo}" alt="照片">` : '無照片'}
           </td>
@@ -302,10 +370,14 @@ export default function App() {
       return;
     }
 
-    const headers = [
+    const baseHeaders = [
       '項次', '登錄時間', '位置類型', '國道', '方向', '里程/交流道名稱', 
       '車道/出入口', '損壞狀況', '改善方式', '監造審查', '後續處理方式', '完成時間'
     ];
+    
+    const headers = activeTab === 'assignments' 
+      ? [...baseHeaders, '派工項目', '完成狀態'] 
+      : baseHeaders;
 
     const csvRows = [
       headers.join(','),
@@ -324,6 +396,11 @@ export default function App() {
           report.follow_up_method || '',
           report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : ''
         ];
+        
+        if (activeTab === 'assignments') {
+          row.push(report.assign_type || '');
+          row.push(report.is_assigned_completed ? '已完成' : '未完成');
+        }
         
         // Escape quotes and wrap in quotes to handle commas in data
         return row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',');
@@ -390,6 +467,21 @@ export default function App() {
               </button>
             </div>
           </div>
+          
+          <div className="flex gap-6 mt-4 overflow-x-auto no-scrollbar">
+            <button 
+              onClick={() => setActiveTab('reports')}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === 'reports' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              巡查紀錄
+            </button>
+            <button 
+              onClick={() => setActiveTab('assignments')}
+              className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === 'assignments' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            >
+              派工單
+            </button>
+          </div>
         </div>
       </header>
 
@@ -441,6 +533,14 @@ export default function App() {
                 placeholder="搜尋損壞狀況..."
                 allLabel="所有損壞狀況"
               />
+
+              <SearchableDropdown
+                options={uniqueMileages}
+                value={filterMileage}
+                onChange={setFilterMileage}
+                placeholder="搜尋里程..."
+                allLabel="所有里程"
+              />
             </div>
 
             <div className="flex-1"></div>
@@ -448,12 +548,14 @@ export default function App() {
             <div className="flex items-center gap-2 border-l border-gray-200 pl-4">
               <ArrowUpDown size={16} className="text-gray-400" />
               <select
-                value={sortByDate}
-                onChange={(e) => setSortByDate(e.target.value as 'desc' | 'asc')}
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'dateDesc' | 'dateAsc' | 'mileageAsc' | 'mileageDesc')}
                 className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
               >
-                <option value="desc">日期 (新到舊)</option>
-                <option value="asc">日期 (舊到新)</option>
+                <option value="dateDesc">日期 (新到舊)</option>
+                <option value="dateAsc">日期 (舊到新)</option>
+                <option value="mileageAsc">里程 (小到大)</option>
+                <option value="mileageDesc">里程 (大到小)</option>
               </select>
             </div>
           </div>
@@ -468,10 +570,13 @@ export default function App() {
           <ReportList 
             reports={filteredAndSortedReports} 
             filter={filter}
+            activeTab={activeTab}
             onDelete={handleDeleteReport}
             onBulkDelete={handleBulkDelete}
             onEdit={handleEditReport}
             onGetPhoto={getReportPhoto}
+            onAssign={(id, type) => handleQuickUpdate(id, { assign_type: type, is_assigned_completed: false })}
+            onToggleComplete={(id, completed) => handleQuickUpdate(id, { is_assigned_completed: completed })}
           />
         )}
       </main>

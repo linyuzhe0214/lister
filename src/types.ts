@@ -14,4 +14,6 @@ export interface Report {
   location_type: 'mainline' | 'ramp';
   photo: string;
   created_at?: string;
+  assign_type?: string;
+  is_assigned_completed?: boolean;
 }

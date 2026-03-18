@@ -9,7 +9,8 @@ function ensureSheet() {
     const headers = [
       'id', 'item_number', 'log_time', 'highway', 'direction', 'mileage', 'lane',
       'damage_condition', 'improvement_method', 'supervision_review',
-      'follow_up_method', 'completion_time', 'location_type', 'photo', 'created_at'
+      'follow_up_method', 'completion_time', 'location_type', 'photo', 'created_at',
+      'assign_type', 'is_assigned_completed'
     ];
     sheet.appendRow(headers);
     sheet.setFrozenRows(1);
@@ -56,9 +57,48 @@ function doPost(e) {
     if (action === 'bulkDelete') return bulkDelete(payload.ids);
     if (action === 'getPhoto') return getPhoto(payload.id);
     
-    return responseJson({ error: 'Invalid action' }, 400);
+      return responseJson({ error: 'Invalid action' }, 400);
   } catch (error) {
     return responseJson({ error: error.toString() }, 500);
+  }
+}
+
+function syncAssignedWorks() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const mainSheet = ensureSheet();
+  const allData = mainSheet.getDataRange().getValues();
+  
+  let assignSheet = ss.getSheetByName('AssignedWorks');
+  if (!assignSheet) {
+    assignSheet = ss.insertSheet('AssignedWorks');
+  }
+  
+  if (allData.length === 0) return;
+  
+  const headers = allData[0];
+  const assignTypeIdx = headers.indexOf('assign_type');
+  
+  const assignedData = allData.filter((row, i) => {
+    if (i === 0) return true; // Keep headers
+    return row[assignTypeIdx] !== undefined && row[assignTypeIdx] !== '';
+  });
+  
+  assignSheet.clear();
+  if (assignedData.length > 0) {
+    assignSheet.getRange(1, 1, assignedData.length, assignedData[0].length).setValues(assignedData);
+    assignSheet.setFrozenRows(1);
+    
+    // Make completed rows green
+    const completedIdx = headers.indexOf('is_assigned_completed');
+    if (assignedData.length > 1) {
+      for (let i = 1; i < assignedData.length; i++) {
+        if (assignedData[i][completedIdx] === true || assignedData[i][completedIdx] === 'true') {
+          assignSheet.getRange(i + 1, 1, 1, assignedData[i].length).setBackground('#d4edda'); // light green
+        } else {
+          assignSheet.getRange(i + 1, 1, 1, assignedData[i].length).setBackground(null);
+        }
+      }
+    }
   }
 }
 
@@ -77,6 +117,7 @@ function bulkDelete(ids) {
     }
   }
   
+  syncAssignedWorks();
   return responseJson({ success: true });
 }
 
@@ -106,6 +147,7 @@ function createReport(data) {
     return data[header] !== undefined ? data[header] : '';
   });
   sheet.appendRow(rowData);
+  syncAssignedWorks();
   return responseJson({ id: id, ...data });
 }
 
@@ -134,6 +176,7 @@ function updateReport(id, data) {
   });
   
   sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+  syncAssignedWorks();
   return responseJson({ success: true });
 }
 
@@ -154,6 +197,7 @@ function deleteReport(id) {
   if (rowIndex === -1) return responseJson({ error: 'Report not found' }, 404);
   
   sheet.deleteRow(rowIndex);
+  syncAssignedWorks();
   return responseJson({ success: true });
 }
 

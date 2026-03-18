@@ -6,16 +6,20 @@ import { Report } from '../types';
 interface ReportListProps {
   reports: Report[];
   filter: 'all' | 'mainline' | 'ramp';
+  activeTab: 'reports' | 'assignments';
   onDelete: (id: number) => void;
   onBulkDelete: (ids: number[]) => void;
   onEdit: (report: Report) => void;
   onGetPhoto: (id: number) => Promise<string>;
+  onAssign: (id: number, type: string) => void;
+  onToggleComplete: (id: number, completed: boolean) => void;
 }
 
-export function ReportList({ reports, filter, onDelete, onBulkDelete, onEdit, onGetPhoto }: ReportListProps) {
+export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete, onEdit, onGetPhoto, onAssign, onToggleComplete }: ReportListProps) {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [assigningReportId, setAssigningReportId] = useState<number | null>(null);
 
   const handlePreviewPhoto = async (report: Report) => {
     if (report.photo) {
@@ -123,14 +127,27 @@ export function ReportList({ reports, filter, onDelete, onBulkDelete, onEdit, on
                 <th className="p-4 min-w-[150px]">損壞狀況</th>
                 <th className="p-4 whitespace-nowrap">改善方式</th>
                 <th className="p-4 whitespace-nowrap">監造審查</th>
+                {activeTab === 'assignments' && (
+                  <>
+                    <th className="p-4 whitespace-nowrap">派工項目</th>
+                    <th className="p-4 whitespace-nowrap text-center">狀態</th>
+                  </>
+                )}
                 <th className="p-4 whitespace-nowrap">完成時間</th>
                 <th className="p-4 whitespace-nowrap">現場照片</th>
                 <th className="p-4 whitespace-nowrap text-center">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {reports.map((report, index) => (
-                <tr key={report.id} className={`hover:bg-gray-50/50 transition-colors text-sm text-gray-800 ${selectedIds.includes(report.id!) ? 'bg-indigo-50/30' : ''}`}>
+              {reports.map((report, index) => {
+                const isSelected = selectedIds.includes(report.id!);
+                const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
+                let rowBg = 'hover:bg-gray-50/50';
+                if (isSelected) rowBg = 'bg-indigo-50/30';
+                else if (isCompleted) rowBg = 'bg-green-50/50 hover:bg-green-100/50';
+
+                return (
+                <tr key={report.id} className={`transition-colors text-sm text-gray-800 ${rowBg}`}>
                   <td className="p-4">
                     <button 
                       onClick={() => report.id && toggleSelect(report.id)}
@@ -157,6 +174,25 @@ export function ReportList({ reports, filter, onDelete, onBulkDelete, onEdit, on
                   <td className="p-4">{report.damage_condition}</td>
                   <td className="p-4 whitespace-nowrap">{report.improvement_method}</td>
                   <td className="p-4 whitespace-nowrap">{report.supervision_review || '-'}</td>
+                  {activeTab === 'assignments' && (
+                    <>
+                      <td className="p-4 whitespace-nowrap">
+                        <span className="font-medium text-indigo-700">{report.assign_type || '-'}</span>
+                      </td>
+                      <td className="p-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={() => report.id && onToggleComplete(report.id, !report.is_assigned_completed)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
+                            report.is_assigned_completed 
+                              ? 'bg-green-500 text-white hover:bg-green-600' 
+                              : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          {report.is_assigned_completed ? '已完成' : '標示完成'}
+                        </button>
+                      </td>
+                    </>
+                  )}
                   <td className="p-4 whitespace-nowrap">{report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
                   <td className="p-4">
                     <div 
@@ -172,24 +208,43 @@ export function ReportList({ reports, filter, onDelete, onBulkDelete, onEdit, on
                   </td>
                   <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-2">
-                      <button 
-                        onClick={() => onEdit(report)}
-                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="編輯紀錄"
-                      >
-                        <Pencil size={18} />
-                      </button>
-                      <button 
-                        onClick={() => report.id && onDelete(report.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        title="刪除紀錄"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {activeTab === 'reports' ? (
+                        <>
+                          <button 
+                            onClick={() => report.id && setAssigningReportId(report.id)}
+                            className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${report.assign_type ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}
+                            title={report.assign_type ? `已派工: ${report.assign_type}` : '派工'}
+                          >
+                            <AlertCircle size={18} />
+                          </button>
+                          <button 
+                            onClick={() => onEdit(report)}
+                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="編輯紀錄"
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button 
+                            onClick={() => report.id && onDelete(report.id)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="刪除紀錄"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </>
+                      ) : (
+                        <button 
+                          onClick={() => onEdit(report)}
+                          className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="查看詳情"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
@@ -225,6 +280,54 @@ export function ReportList({ reports, filter, onDelete, onBulkDelete, onEdit, on
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Assignment Modal */}
+      {assigningReportId !== null && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 transition-opacity">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm relative animate-in fade-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => setAssigningReportId(null)} 
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                <AlertCircle size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">選擇派工項目</h3>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => { 
+                  onAssign(assigningReportId, '冷料修補'); 
+                  setAssigningReportId(null); 
+                }} 
+                className="w-full flex items-center justify-between px-5 py-4 bg-white border-2 border-blue-100 hover:border-blue-500 hover:bg-blue-50 text-blue-700 font-bold rounded-xl transition-all active:scale-[0.98] group"
+              >
+                <span>冷料修補</span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 text-sm">選擇 →</span>
+              </button>
+              
+              <button 
+                onClick={() => { 
+                  onAssign(assigningReportId, '熱料刨鋪'); 
+                  setAssigningReportId(null); 
+                }} 
+                className="w-full flex items-center justify-between px-5 py-4 bg-white border-2 border-orange-100 hover:border-orange-500 hover:bg-orange-50 text-orange-700 font-bold rounded-xl transition-all active:scale-[0.98] group"
+              >
+                <span>熱料刨鋪</span>
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-orange-500 text-sm">選擇 →</span>
+              </button>
+            </div>
+            
+            <p className="mt-4 text-xs text-gray-500 text-center">
+              派工後此紀錄將會出現在「派工單」頁籤中
+            </p>
           </div>
         </div>
       )}
