@@ -127,6 +127,9 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   };
 
   const submitForm = (data: Report) => {
+    if (data.coordinates) {
+      data.coordinates = data.coordinates.trim();
+    }
     if (!photoPreview) {
       alert('請上傳照片');
       return;
@@ -208,22 +211,24 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                       開啟 Google Maps
                     </button>
                     
-                    <div className="relative">
                       <input 
                         type="text"
                         placeholder="在此貼上座標 (例如: 24.123, 120.456)"
                         className="w-full px-4 py-3 border-2 border-indigo-100 rounded-xl outline-none focus:border-indigo-500 transition-all"
                         onPaste={(e) => {
                           const pasted = e.clipboardData.getData('Text');
+                          console.log("Pasted coordinates:", pasted);
                           if (pasted) {
                             setValue('coordinates', pasted);
                             setShowMapPicker(false);
                           }
                         }}
-                        onChange={(e) => setValue('coordinates', e.target.value)}
+                        onChange={(e) => {
+                          console.log("Typing coordinates:", e.target.value);
+                          setValue('coordinates', e.target.value);
+                        }}
                         value={watch('coordinates') || ''}
                       />
-                    </div>
                     
                     <button 
                       type="button"

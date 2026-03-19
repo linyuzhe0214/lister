@@ -14,13 +14,16 @@ function ensureSheet() {
     sheet = ss.insertSheet(SHEET_NAME);
     sheet.appendRow(targetHeaders);
     sheet.setFrozenRows(1);
-  } else {
-    // Check for missing headers and add them
-    const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const missingHeaders = targetHeaders.filter(h => currentHeaders.indexOf(h) === -1);
+  }
+  
+  // Check for missing headers and add them (case-insensitive)
+  const lastCol = sheet.getLastColumn();
+  if (lastCol > 0) {
+    const currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    const currentHeadersLower = currentHeaders.map(h => String(h).toLowerCase());
+    const missingHeaders = targetHeaders.filter(h => currentHeadersLower.indexOf(h.toLowerCase()) === -1);
     
     if (missingHeaders.length > 0) {
-      const lastCol = sheet.getLastColumn();
       sheet.getRange(1, lastCol + 1, 1, missingHeaders.length).setValues([missingHeaders]);
     }
   }
@@ -55,11 +58,19 @@ function doGet(e) {
   let reports = data.map(row => {
     let obj = {};
     headers.forEach((header, i) => {
+      const h = String(header).toLowerCase();
       // If includePhotos is false, return empty string for photo to save bandwidth
-      if (header === 'photo' && !includePhotos) {
-        obj[header] = ''; 
+      if (h === 'photo' && !includePhotos) {
+        obj[h] = ''; 
       } else {
-        obj[header] = row[i];
+        // Only set value if current obj value is empty or undefined, 
+        // prioritizing non-empty values from duplicate (case-insensitive) columns
+        if (obj[h] === undefined || obj[h] === '') {
+          obj[h] = row[i];
+        } else if (row[i] !== '') {
+          // If we already have a value but found another non-empty one, could log it,
+          // but for now just prioritize the first non-empty we find
+        }
       }
     });
     return obj;
@@ -297,17 +308,20 @@ function updateReport(id, data) {
   if (rowIndex === -1) return responseJson({ error: 'Report not found' }, 404);
   
   const rowData = headers.map((header, i) => {
-    if (header === 'id') return id;
-    if (header === 'created_at') return allData[rowIndex - 1][i] || ''; // Prevent undefined
-    if (header === 'log_time') return allData[rowIndex - 1][i]; // Never overwrite log_time
+    const h = String(header).toLowerCase();
+    if (h === 'id') return id;
+    if (h === 'created_at') return allData[rowIndex - 1][i] || ''; // Prevent undefined
+    if (h === 'log_time') return allData[rowIndex - 1][i]; // Never overwrite log_time
     
-    if (data[header] !== undefined) {
+    // Look for data using both exact match and lowercase
+    const val = data[header] !== undefined ? data[header] : data[h];
+    
+    if (val !== undefined) {
       // Safeguard: Don't overwrite photo or coordinates with empty string if they already have data
-      // This prevents accidental wipes during partial updates or UI glitches
-      if ((header === 'photo' || header === 'coordinates') && String(data[header]).trim() === '' && allData[rowIndex - 1][i]) {
+      if ((h === 'photo' || h === 'coordinates') && String(val).trim() === '' && allData[rowIndex - 1][i]) {
         return allData[rowIndex - 1][i];
       }
-      return data[header];
+      return val;
     }
     
     const prevVal = allData[rowIndex - 1][i];

@@ -242,6 +242,8 @@ export default function App() {
         ? { action: 'update', id: editingReport.id, data }
         : { action: 'create', data };
 
+      console.log("Submitting Payload:", { action: payload.action, coordinates: data.coordinates });
+
       const res = await fetch(GAS_URL, {
         method: 'POST',
         mode: 'no-cors',
