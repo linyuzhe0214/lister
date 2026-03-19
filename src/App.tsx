@@ -19,6 +19,8 @@ export default function App() {
   const [filterAssignType, setFilterAssignType] = useState<string>('all');
   const [mileageStart, setMileageStart] = useState<string>('');
   const [mileageEnd, setMileageEnd] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [globalSearch, setGlobalSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -133,6 +135,15 @@ export default function App() {
       });
     }
 
+    if (startDate || endDate) {
+      result = result.filter(r => {
+        const reportDate = format(new Date(r.log_time), 'yyyy-MM-dd');
+        const isAfterStart = startDate ? reportDate >= startDate : true;
+        const isBeforeEnd = endDate ? reportDate <= endDate : true;
+        return isAfterStart && isBeforeEnd;
+      });
+    }
+
     if (activeTab === 'assignments' && filterAssignType !== 'all') {
       result = result.filter(r => r.assign_type === filterAssignType);
     }
@@ -163,7 +174,7 @@ export default function App() {
     });
 
     return result;
-  }, [tabFilteredReports, filterHighway, filterDamage, filterAssignType, mileageStart, mileageEnd, sortBy, globalSearch, activeTab]);
+  }, [tabFilteredReports, filterHighway, filterDamage, filterAssignType, mileageStart, mileageEnd, startDate, endDate, sortBy, globalSearch, activeTab]);
 
   const handleQuickUpdate = async (id: number, updates: Partial<Report>) => {
     if (!GAS_URL) return;
@@ -601,6 +612,26 @@ export default function App() {
                   allLabel="所有派工項目"
                 />
               )}
+
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="w-36 sm:w-44 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                  title="開始日期"
+                />
+                <span className="text-gray-400 text-sm font-medium">至</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="w-36 sm:w-44 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                  title="結束日期"
+                />
+              </div>
+
+              <div className="h-6 w-px bg-gray-200 mx-2 hidden lg:block"></div>
 
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <input
