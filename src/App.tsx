@@ -53,7 +53,8 @@ export default function App() {
       // If we already have cached data, don't show full loading spinner for a better experience
       if (reports.length === 0) setLoading(true);
       
-      const res = await fetch(`${GAS_URL}?location_type=${filter}&include_photos=false`);
+      const timestamp = new Date().getTime();
+      const res = await fetch(`${GAS_URL}?location_type=${filter}&include_photos=false&_t=${timestamp}`);
       const data = await res.json();
       const reportData = Array.isArray(data) ? data : [];
       
@@ -199,7 +200,7 @@ export default function App() {
               ...(updates.completion_time !== undefined ? { completion_time: updates.completion_time } : {})
             } 
           }
-        : { action: 'update', id, data: updatedReport };
+        : { action: 'update', id, data: updates };
 
       const res = await fetch(GAS_URL, {
         method: 'POST',
@@ -250,6 +251,8 @@ export default function App() {
       
       // Since it's no-cors, we refresh anyway.
       setEditingReport(null);
+      // Update local storage immediately with the optimistic/new data
+      localStorage.setItem('reports_cache', JSON.stringify(optimisticData));
       await fetchReports();
     } catch (error: any) {
       console.error('Failed to save report:', error);

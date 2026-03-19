@@ -300,7 +300,16 @@ function updateReport(id, data) {
     if (header === 'id') return id;
     if (header === 'created_at') return allData[rowIndex - 1][i] || ''; // Prevent undefined
     if (header === 'log_time') return allData[rowIndex - 1][i]; // Never overwrite log_time
-    if (data[header] !== undefined) return data[header];
+    
+    if (data[header] !== undefined) {
+      // Safeguard: Don't overwrite photo or coordinates with empty string if they already have data
+      // This prevents accidental wipes during partial updates or UI glitches
+      if ((header === 'photo' || header === 'coordinates') && String(data[header]).trim() === '' && allData[rowIndex - 1][i]) {
+        return allData[rowIndex - 1][i];
+      }
+      return data[header];
+    }
+    
     const prevVal = allData[rowIndex - 1][i];
     return prevVal !== undefined ? prevVal : ''; // Prevent undefined causing setValues error
   });
