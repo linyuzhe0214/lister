@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { MapPin, Trash2, Pencil, X, Camera, CheckSquare, Square, AlertCircle } from 'lucide-react';
 import { Report } from '../types';
@@ -18,6 +18,13 @@ interface ReportListProps {
 export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete, onEdit, onGetPhoto, onAssign, onToggleComplete }: ReportListProps) {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const lastPanOffset = useRef({ x: 0, y: 0 });
+  // pinch-to-zoom
+  const lastPinchDist = useRef<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [assigningReportId, setAssigningReportId] = useState<number | null>(null);
   const [completingReportId, setCompletingReportId] = useState<number | null>(null);
@@ -26,6 +33,8 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   const handlePreviewPhoto = async (report: Report) => {
     if (report.photo) {
       setPreviewPhoto(report.photo);
+      setZoomScale(1);
+      setPanOffset({ x: 0, y: 0 });
       return;
     }
 
@@ -33,18 +42,80 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
 
     try {
       setIsPreviewLoading(true);
+      setPreviewPhoto('loading'); // open modal with spinner first
       const photo = await onGetPhoto(report.id);
       if (photo) {
         setPreviewPhoto(photo);
+        setZoomScale(1);
+        setPanOffset({ x: 0, y: 0 });
         // Update local report object to avoid re-fetching
         report.photo = photo;
       } else {
+        setPreviewPhoto(null);
         alert('無法載入照片');
       }
     } finally {
       setIsPreviewLoading(false);
     }
   };
+
+  const closePreview = useCallback(() => {
+    setPreviewPhoto(null);
+    setZoomScale(1);
+    setPanOffset({ x: 0, y: 0 });
+    lastPinchDist.current = null;
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = e.deltaY > 0 ? 0.85 : 1.18;
+    setZoomScale(prev => Math.min(Math.max(prev * delta, 0.5), 8));
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (zoomScale <= 1) return;
+    isDragging.current = true;
+    dragStart.current = { x: e.clientX - lastPanOffset.current.x, y: e.clientY - lastPanOffset.current.y };
+    e.currentTarget.setAttribute('data-dragging', 'true');
+  }, [zoomScale]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const nx = e.clientX - dragStart.current.x;
+    const ny = e.clientY - dragStart.current.y;
+    lastPanOffset.current = { x: nx, y: ny };
+    setPanOffset({ x: nx, y: ny });
+  }, []);
+
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    isDragging.current = false;
+    e.currentTarget.removeAttribute('data-dragging');
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastPinchDist.current = Math.sqrt(dx * dx + dy * dy);
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && lastPinchDist.current !== null) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const ratio = dist / lastPinchDist.current;
+      lastPinchDist.current = dist;
+      setZoomScale(prev => Math.min(Math.max(prev * ratio, 0.5), 8));
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    lastPinchDist.current = null;
+  }, []);
 
   const toggleSelectAll = () => {
     if (selectedIds.length === reports.length) {
@@ -279,34 +350,82 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
       {/* Photo Preview Modal */}
       {previewPhoto && (
         <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          onClick={() => setPreviewPhoto(null)}
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
+          onClick={closePreview}
         >
-          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center">
-            <button 
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors p-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                setPreviewPhoto(null);
-              }}
-            >
-              <X size={32} />
-            </button>
-            {(previewPhoto || isPreviewLoading) && (
-              <div className="flex flex-col items-center justify-center min-h-[200px]">
-                {isPreviewLoading ? (
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600"></div>
-                ) : (
-                  <img 
-                    src={previewPhoto!} 
-                    alt="照片預覽" 
-                    className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                )}
-              </div>
+          {/* Toolbar */}
+          <div
+            className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 backdrop-blur rounded-full px-4 py-2 z-10"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              className="text-white hover:text-indigo-300 transition-colors p-1.5 rounded-full hover:bg-white/10 text-lg font-bold leading-none"
+              onClick={() => setZoomScale(prev => Math.min(prev * 1.3, 8))}
+              title="放大"
+            >+</button>
+            <span className="text-white/70 text-sm min-w-[3rem] text-center">{Math.round(zoomScale * 100)}%</span>
+            <button
+              className="text-white hover:text-indigo-300 transition-colors p-1.5 rounded-full hover:bg-white/10 text-lg font-bold leading-none"
+              onClick={() => setZoomScale(prev => Math.max(prev / 1.3, 0.5))}
+              title="縮小"
+            >−</button>
+            <div className="w-px h-4 bg-white/30 mx-1" />
+            <button
+              className="text-white/70 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/10 text-xs"
+              onClick={() => { setZoomScale(1); setPanOffset({ x: 0, y: 0 }); lastPanOffset.current = { x: 0, y: 0 }; }}
+              title="重置"
+            >1:1</button>
+          </div>
+
+          {/* Close button */}
+          <button 
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors p-2 bg-black/40 rounded-full z-10"
+            onClick={closePreview}
+          >
+            <X size={24} />
+          </button>
+
+          {/* Image container */}
+          <div
+            className="w-full h-full flex items-center justify-center overflow-hidden"
+            onClick={e => e.stopPropagation()}
+            onWheel={handleWheel}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            style={{ cursor: zoomScale > 1 ? (isDragging.current ? 'grabbing' : 'grab') : 'default' }}
+          >
+            {isPreviewLoading ? (
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600" />
+            ) : (
+              <img 
+                src={previewPhoto!} 
+                alt="照片預覽" 
+                draggable={false}
+                style={{
+                  transform: `scale(${zoomScale}) translate(${panOffset.x / zoomScale}px, ${panOffset.y / zoomScale}px)`,
+                  transition: isDragging.current ? 'none' : 'transform 0.15s ease',
+                  maxWidth: '90vw',
+                  maxHeight: '90vh',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
+                  userSelect: 'none',
+                }}
+              />
             )}
           </div>
+
+          {/* Hint */}
+          {zoomScale === 1 && !isPreviewLoading && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/40 text-xs">
+              滾輪 / 雙指 縮放　縮放後可拖動
+            </div>
+          )}
         </div>
       )}
 

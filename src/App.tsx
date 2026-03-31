@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Filter, Search, ArrowUpDown, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { Report } from './types';
@@ -8,6 +8,7 @@ import { SearchableDropdown } from './components/SearchableDropdown';
 
 export default function App() {
   const [reports, setReports] = useState<Report[]>([]);
+  const photoCache = useRef<Map<number, string>>(new Map());
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
   const [deletingReportId, setDeletingReportId] = useState<number | null>(null);
@@ -69,6 +70,10 @@ export default function App() {
 
   const getReportPhoto = async (id: number): Promise<string> => {
     if (!GAS_URL) return '';
+    // 先查 cache，有就直接回傳，不再發請求
+    if (photoCache.current.has(id)) {
+      return photoCache.current.get(id)!;
+    }
     try {
       const res = await fetch(GAS_URL, {
         method: 'POST',
@@ -76,7 +81,9 @@ export default function App() {
         body: JSON.stringify({ action: 'getPhoto', id }),
       });
       const data = await res.json();
-      return data.photo || '';
+      const photo = data.photo || '';
+      if (photo) photoCache.current.set(id, photo);
+      return photo;
     } catch (error) {
       console.error('Failed to fetch photo:', error);
       return '';
