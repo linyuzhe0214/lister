@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { format } from 'date-fns';
 import { MapPin, Trash2, Pencil, X, Camera, CheckSquare, Square, AlertCircle } from 'lucide-react';
 import { Report } from '../types';
@@ -23,7 +23,6 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   const isDragging = useRef(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const lastPanOffset = useRef({ x: 0, y: 0 });
-  // pinch-to-zoom
   const lastPinchDist = useRef<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [assigningReportId, setAssigningReportId] = useState<number | null>(null);
@@ -31,6 +30,32 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   const [completionDate, setCompletionDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
+  
+  const [scrollState, setScrollState] = useState({ left: false, right: false });
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  const checkScroll = useCallback(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setScrollState({
+      left: scrollLeft > 0,
+      right: scrollLeft < scrollWidth - clientWidth - 1
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = tableContainerRef.current;
+    if (el) {
+      el.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+      checkScroll();
+    }
+    return () => {
+      el?.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, [checkScroll, reports]);
 
   // Reset page when reports change (e.g. filter change)
   const prevReportsLen = useRef(reports.length);
@@ -62,7 +87,6 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
         setPreviewPhoto(photo);
         setZoomScale(1);
         setPanOffset({ x: 0, y: 0 });
-        // Update local report object to avoid re-fetching
         report.photo = photo;
       } else {
         setPreviewPhoto(null);
@@ -139,11 +163,11 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
     }
   };
 
-  const toggleSelect = (id: number) => {
+  const toggleSelect = useCallback((id: number) => {
     setSelectedIds(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
-  };
+  }, []);
 
   const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
@@ -184,12 +208,15 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+        <div 
+          ref={tableContainerRef}
+          className="overflow-x-auto custom-scrollbar"
+        >
+          <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-sm font-medium text-gray-500">
-                <th className="p-4 w-10">
+                <th className={`p-4 w-10 sticky-left bg-gray-50 z-30 ${scrollState.left ? 'shadow-left' : ''}`}>
                   <button 
                     onClick={toggleSelectAll}
                     className="text-gray-400 hover:text-indigo-600 transition-colors"
@@ -222,141 +249,30 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                 )}
                 <th className="p-4 whitespace-nowrap">完成時間</th>
                 <th className="p-4 whitespace-nowrap">現場照片</th>
-                <th className="p-4 whitespace-nowrap text-center">操作</th>
+                <th className={`p-4 whitespace-nowrap text-center sticky-right bg-gray-50 z-30 ${scrollState.right ? 'shadow-right' : ''}`}>操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {paginatedReports.map((report, index) => {
-                const globalIndex = page * PAGE_SIZE + index;
-                const isSelected = selectedIds.includes(report.id!);
-                const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
-                let rowBg = 'hover:bg-gray-50/50';
-                if (isSelected) rowBg = 'bg-indigo-50/30';
-                else if (isCompleted) rowBg = 'bg-green-50/50 hover:bg-green-100/50';
-
-                return (
-                <tr key={report.id} className={`transition-colors text-sm text-gray-800 ${rowBg}`}>
-                  <td className="p-4">
-                    <button 
-                      onClick={() => report.id && toggleSelect(report.id)}
-                      className="text-gray-400 hover:text-indigo-600 transition-colors"
-                    >
-                      {selectedIds.includes(report.id!) ? (
-                        <CheckSquare size={20} className="text-indigo-600" />
-                      ) : (
-                        <Square size={20} />
-                      )}
-                    </button>
-                  </td>
-                  <td className="p-4 font-medium text-gray-900">{globalIndex + 1}</td>
-                  <td className="p-4 whitespace-nowrap">{format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
-                  <td className="p-4">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium
-                      ${report.location_type === 'mainline' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {report.location_type === 'mainline' ? '主線' : '匝道'}
-                    </span>
-                  </td>
-                  <td className="p-4 whitespace-nowrap">{report.highway} {report.direction}</td>
-                  <td className="p-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      {report.mileage}
-                      {report.coordinates && (
-                        <button 
-                          onClick={() => window.open(`https://www.google.com/maps?q=${report.coordinates}`, '_blank')}
-                          className="text-indigo-600 hover:text-indigo-800 transition-colors"
-                          title="查看地圖位置"
-                        >
-                          <MapPin size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4 whitespace-nowrap">{report.lane}</td>
-                  <td className="p-4">{report.damage_condition}</td>
-                  <td className="p-4 whitespace-nowrap">{report.improvement_method}</td>
-                  <td className="p-4 whitespace-nowrap">{report.supervision_review || '-'}</td>
-                  {activeTab === 'assignments' && (
-                    <>
-                      <td className="p-4 whitespace-nowrap">
-                        <span className={`font-bold ${report.assign_type === '熱料刨鋪' ? 'text-red-500' : report.assign_type === '冷料修補' ? 'text-blue-500' : 'text-indigo-700'}`}>
-                          {report.assign_type || '-'}
-                        </span>
-                      </td>
-                      <td className="p-4 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => {
-                            if (report.id) {
-                              if (report.is_assigned_completed) {
-                                onToggleComplete(report.id, false);
-                              } else {
-                                setCompletingReportId(report.id);
-                                setCompletionDate(format(new Date(), 'yyyy-MM-dd'));
-                              }
-                            }
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
-                            report.is_assigned_completed 
-                              ? 'bg-green-500 text-white hover:bg-green-600' 
-                              : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
-                          {report.is_assigned_completed ? '已完成' : '標示完成'}
-                        </button>
-                      </td>
-                    </>
-                  )}
-                  <td className="p-4 whitespace-nowrap">{report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
-                  <td className="p-4">
-                    <div 
-                      className="w-16 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
-                      onClick={() => handlePreviewPhoto(report)}
-                    >
-                      {report.photo ? (
-                        <img src={report.photo} alt="現場照片" className="w-full h-full object-cover" />
-                      ) : (
-                        <Camera size={18} className="text-gray-400" />
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      {activeTab === 'reports' ? (
-                        <>
-                          <button 
-                            onClick={() => report.id && setAssigningReportId(report.id)}
-                            className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${report.assign_type ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}
-                            title={report.assign_type ? `已派工: ${report.assign_type}` : '派工'}
-                          >
-                            <AlertCircle size={18} />
-                          </button>
-                          <button 
-                            onClick={() => onEdit(report)}
-                            className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="編輯紀錄"
-                          >
-                            <Pencil size={18} />
-                          </button>
-                          <button 
-                            onClick={() => report.id && onDelete(report.id)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="刪除紀錄"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </>
-                      ) : (
-                        <button 
-                          onClick={() => report.id && onDelete(report.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="取消派工"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )})}
+              {paginatedReports.map((report, index) => (
+                <ReportRow 
+                  key={report.id}
+                  report={report}
+                  index={page * PAGE_SIZE + index}
+                  isSelected={selectedIds.includes(report.id!)}
+                  activeTab={activeTab}
+                  filter={filter}
+                  scrollState={scrollState}
+                  toggleSelect={toggleSelect}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onAssign={onAssign}
+                  onToggleComplete={onToggleComplete}
+                  onPhotoClick={handlePreviewPhoto}
+                  setAssigningReportId={setAssigningReportId}
+                  setCompletingReportId={setCompletingReportId}
+                  setCompletionDate={setCompletionDate}
+                />
+              ))}
             </tbody>
           </table>
         </div>
@@ -568,3 +484,168 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
     </div>
   );
 }
+
+const ReportRow = React.memo(({ 
+  report, 
+  index, 
+  isSelected, 
+  activeTab, 
+  filter, 
+  scrollState,
+  toggleSelect, 
+  onEdit, 
+  onDelete, 
+  onAssign, 
+  onToggleComplete, 
+  onPhotoClick,
+  setAssigningReportId,
+  setCompletingReportId,
+  setCompletionDate
+}: {
+  report: Report;
+  index: number;
+  isSelected: boolean;
+  activeTab: string;
+  filter: string;
+  scrollState: { left: boolean; right: boolean };
+  toggleSelect: (id: number) => void;
+  onEdit: (report: Report) => void;
+  onDelete: (id: number) => void;
+  onAssign: (id: number, type: string) => void;
+  onToggleComplete: (id: number, completed: boolean, date?: string) => void;
+  onPhotoClick: (report: Report) => void;
+  setAssigningReportId: (id: number) => void;
+  setCompletingReportId: (id: number) => void;
+  setCompletionDate: (date: string) => void;
+}) => {
+  const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
+  let rowBg = 'hover:bg-gray-50/50';
+  if (isSelected) rowBg = 'bg-indigo-50/30';
+  else if (isCompleted) rowBg = 'bg-green-50/50 hover:bg-green-100/50';
+
+  return (
+    <tr className={`transition-colors text-sm text-gray-800 ${rowBg}`}>
+      <td className={`p-4 sticky-left z-20 ${isSelected ? 'bg-indigo-50/30' : (isCompleted ? 'bg-green-50/50' : 'bg-white')} ${scrollState.left ? 'shadow-left' : ''}`}>
+        <button 
+          onClick={() => report.id && toggleSelect(report.id)}
+          className="text-gray-400 hover:text-indigo-600 transition-colors"
+        >
+          {isSelected ? (
+            <CheckSquare size={20} className="text-indigo-600" />
+          ) : (
+            <Square size={20} />
+          )}
+        </button>
+      </td>
+      <td className="p-4 font-medium text-gray-900">{index + 1}</td>
+      <td className="p-4 whitespace-nowrap">{format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
+      <td className="p-4">
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium
+          ${report.location_type === 'mainline' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+          {report.location_type === 'mainline' ? '主線' : '匝道'}
+        </span>
+      </td>
+      <td className="p-4 whitespace-nowrap">{report.highway} {report.direction}</td>
+      <td className="p-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          {report.mileage}
+          {report.coordinates && (
+            <button 
+              onClick={() => window.open(`https://www.google.com/maps?q=${report.coordinates}`, '_blank')}
+              className="text-indigo-600 hover:text-indigo-800 transition-colors"
+              title="查看地圖位置"
+            >
+              <MapPin size={16} />
+            </button>
+          )}
+        </div>
+      </td>
+      <td className="p-4 whitespace-nowrap">{report.lane}</td>
+      <td className="p-4">{report.damage_condition}</td>
+      <td className="p-4 whitespace-nowrap">{report.improvement_method}</td>
+      <td className="p-4 whitespace-nowrap">{report.supervision_review || '-'}</td>
+      {activeTab === 'assignments' && (
+        <>
+          <td className="p-4 whitespace-nowrap">
+            <span className={`font-bold ${report.assign_type === '熱料刨鋪' ? 'text-red-500' : report.assign_type === '冷料修補' ? 'text-blue-500' : 'text-indigo-700'}`}>
+              {report.assign_type || '-'}
+            </span>
+          </td>
+          <td className="p-4 whitespace-nowrap text-center">
+            <button
+              onClick={() => {
+                if (report.id) {
+                  if (report.is_assigned_completed) {
+                    onToggleComplete(report.id, false);
+                  } else {
+                    setCompletingReportId(report.id);
+                    setCompletionDate(format(new Date(), 'yyyy-MM-dd'));
+                  }
+                }
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
+                report.is_assigned_completed 
+                  ? 'bg-green-500 text-white hover:bg-green-600' 
+                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {report.is_assigned_completed ? '已完成' : '標示完成'}
+            </button>
+          </td>
+        </>
+      )}
+      <td className="p-4 whitespace-nowrap">{report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
+      <td className="p-4">
+        <div 
+          className="w-16 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+          onClick={() => onPhotoClick(report)}
+        >
+          {report.photo ? (
+            <img src={report.photo} alt="現場照片" className="w-full h-full object-cover" />
+          ) : (
+            <Camera size={18} className="text-gray-400" />
+          )}
+        </div>
+      </td>
+      <td className={`p-4 text-center sticky-right z-20 ${isSelected ? 'bg-indigo-50/30' : (isCompleted ? 'bg-green-50/50' : 'bg-white')} ${scrollState.right ? 'shadow-right' : ''}`}>
+        <div className="flex items-center justify-center gap-2">
+          {activeTab === 'reports' ? (
+            <>
+              <button 
+                onClick={() => report.id && setAssigningReportId(report.id)}
+                className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${report.assign_type ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}
+                title={report.assign_type ? `已派工: ${report.assign_type}` : '派工'}
+              >
+                <AlertCircle size={18} />
+              </button>
+              <button 
+                onClick={() => onEdit(report)}
+                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                title="編輯紀錄"
+              >
+                <Pencil size={18} />
+              </button>
+              <button 
+                onClick={() => report.id && onDelete(report.id)}
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                title="刪除紀錄"
+              >
+                <Trash2 size={18} />
+              </button>
+            </>
+          ) : (
+            <button 
+              onClick={() => report.id && onDelete(report.id)}
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title="取消派工"
+            >
+              <Trash2 size={18} />
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+
+ReportRow.displayName = 'ReportRow';

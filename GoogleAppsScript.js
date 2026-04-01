@@ -264,13 +264,16 @@ function getPhotos(ids) {
   const idIndex = headers.indexOf('id');
   const photoIndex = headers.indexOf('photo');
   
+  if (idIndex === -1 || photoIndex === -1) return responseJson({ error: 'Columns not found' }, 500);
+
   const idsStrings = (ids || []).map(String);
   const result = {};
   
+  // Optimization: Single pass through data
   for (let i = 1; i < allData.length; i++) {
     const rowId = String(allData[i][idIndex]);
     if (idsStrings.indexOf(rowId) !== -1) {
-      result[rowId] = allData[i][photoIndex];
+      result[rowId] = allData[i][photoIndex] || '';
     }
   }
   return responseJson(result);
@@ -310,22 +313,21 @@ function updateReport(id, data) {
   const rowData = headers.map((header, i) => {
     const h = String(header).toLowerCase();
     if (h === 'id') return id;
-    if (h === 'created_at') return allData[rowIndex - 1][i] || ''; // Prevent undefined
-    if (h === 'log_time') return allData[rowIndex - 1][i]; // Never overwrite log_time
+    if (h === 'created_at') return allData[rowIndex - 1][i] || ''; 
+    if (h === 'log_time') return allData[rowIndex - 1][i]; 
     
-    // Look for data using both exact match and lowercase
+    // Check both original and lowercase keys in the data object
     const val = data[header] !== undefined ? data[header] : data[h];
     
     if (val !== undefined) {
-      // Safeguard: Don't overwrite photo or coordinates with empty string if they already have data
+      // Don't overwrite photo or coordinates with empty string if they already have data
       if ((h === 'photo' || h === 'coordinates') && String(val).trim() === '' && allData[rowIndex - 1][i]) {
         return allData[rowIndex - 1][i];
       }
       return val;
     }
     
-    const prevVal = allData[rowIndex - 1][i];
-    return prevVal !== undefined ? prevVal : ''; // Prevent undefined causing setValues error
+    return allData[rowIndex - 1][i] !== undefined ? allData[rowIndex - 1][i] : '';
   });
   
   sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);

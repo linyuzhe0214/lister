@@ -52,18 +52,26 @@ export default function App() {
       return;
     }
     try {
-      // If we already have cached data, don't show full loading spinner for a better experience
-      if (reports.length === 0) setLoading(true);
+      // If we already have cached data, don't show full loading spinner
+      if (reports.length === 0) {
+        const cachedData = localStorage.getItem('reports_cache');
+        if (cachedData) {
+          try {
+            setReports(JSON.parse(cachedData));
+            setLoading(false);
+          } catch (e) {}
+        } else {
+          setLoading(true);
+        }
+      }
       
       const timestamp = new Date().getTime();
-      // Always fetch ALL reports; frontend filters by type for instant switching
       const res = await fetch(`${GAS_URL}?location_type=all&include_photos=false&_t=${timestamp}`);
       const data = await res.json();
       const reportData = Array.isArray(data) ? data : [];
       
       setReports(reportData);
       localStorage.setItem('reports_cache', JSON.stringify(reportData));
-      // Background preload photos for visible reports
       preloadPhotos(reportData);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
@@ -102,8 +110,8 @@ export default function App() {
       .map(r => r.id!);
     if (idsToPreload.length === 0) return;
 
-    // Load in batches of 20 using requestIdleCallback for non-blocking
-    const BATCH_SIZE = 20;
+    // Load in smaller batches to avoid hitting GAS quotas or slowing down UI
+    const BATCH_SIZE = 10;
     let batchIdx = 0;
     const loadBatch = () => {
       const batch = idsToPreload.slice(batchIdx * BATCH_SIZE, (batchIdx + 1) * BATCH_SIZE);
