@@ -248,8 +248,7 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                   </>
                 )}
                 <th className="p-4 whitespace-nowrap">完成時間</th>
-                <th className="p-4 whitespace-nowrap">現場照片</th>
-                <th className={`p-4 whitespace-nowrap text-center sticky-right bg-gray-50 z-30 ${scrollState.right ? 'shadow-right' : ''}`}>操作</th>
+                <th className={`p-4 whitespace-nowrap text-center sticky-right bg-gray-50 z-30 ${scrollState.right ? 'shadow-right' : ''}`}>操作 / 照片</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -595,39 +594,42 @@ const ReportRow = React.memo(({
         </>
       )}
       <td className="p-4 whitespace-nowrap">{report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
-      <td className="p-4">
-        <div 
-          className="w-16 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
-          onClick={() => onPhotoClick(report)}
-        >
-          {report.photo ? (
-            <img src={report.photo} alt="現場照片" className="w-full h-full object-cover" />
-          ) : (
-            <Camera size={18} className="text-gray-400" />
-          )}
-        </div>
-      </td>
       <td className={`p-4 text-center sticky-right z-20 ${isSelected ? 'bg-indigo-50/30' : (isCompleted ? 'bg-green-50/50' : 'bg-white')} ${scrollState.right ? 'shadow-right' : ''}`}>
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+          {/* Photo Preview Button */}
+          <div 
+            className="w-9 h-9 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center flex-shrink-0"
+            onClick={() => onPhotoClick(report)}
+            title="查看照片"
+          >
+            {report.photo ? (
+              <img src={report.photo} alt="縮圖" className="w-full h-full object-cover" />
+            ) : (
+              <Camera size={18} className="text-gray-400" />
+            )}
+          </div>
+
+          <div className="w-px h-6 bg-gray-100 mx-0.5 hidden xs:block" />
+
           {activeTab === 'reports' ? (
             <>
               <button 
                 onClick={() => report.id && setAssigningReportId(report.id)}
-                className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${report.assign_type ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}
+                className={`p-2 rounded-lg transition-colors flex items-center gap-1 flex-shrink-0 ${report.assign_type ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}
                 title={report.assign_type ? `已派工: ${report.assign_type}` : '派工'}
               >
                 <AlertCircle size={18} />
               </button>
               <button 
                 onClick={() => onEdit(report)}
-                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex-shrink-0"
                 title="編輯紀錄"
               >
                 <Pencil size={18} />
               </button>
               <button 
                 onClick={() => report.id && onDelete(report.id)}
-                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
                 title="刪除紀錄"
               >
                 <Trash2 size={18} />
@@ -636,7 +638,7 @@ const ReportRow = React.memo(({
           ) : (
             <button 
               onClick={() => report.id && onDelete(report.id)}
-              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
               title="取消派工"
             >
               <Trash2 size={18} />
