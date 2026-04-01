@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { format } from 'date-fns';
 import { MapPin, Trash2, Pencil, X, Camera, CheckSquare, Square, AlertCircle } from 'lucide-react';
 import { Report } from '../types';
@@ -29,6 +29,20 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   const [assigningReportId, setAssigningReportId] = useState<number | null>(null);
   const [completingReportId, setCompletingReportId] = useState<number | null>(null);
   const [completionDate, setCompletionDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
+
+  // Reset page when reports change (e.g. filter change)
+  const prevReportsLen = useRef(reports.length);
+  if (reports.length !== prevReportsLen.current) {
+    prevReportsLen.current = reports.length;
+    if (page !== 0) setPage(0);
+  }
+
+  const totalPages = Math.ceil(reports.length / PAGE_SIZE);
+  const paginatedReports = useMemo(() => 
+    reports.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
+  , [reports, page]);
 
   const handlePreviewPhoto = async (report: Report) => {
     if (report.photo) {
@@ -212,7 +226,8 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {reports.map((report, index) => {
+              {paginatedReports.map((report, index) => {
+                const globalIndex = page * PAGE_SIZE + index;
                 const isSelected = selectedIds.includes(report.id!);
                 const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
                 let rowBg = 'hover:bg-gray-50/50';
@@ -233,7 +248,7 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                       )}
                     </button>
                   </td>
-                  <td className="p-4 font-medium text-gray-900">{index + 1}</td>
+                  <td className="p-4 font-medium text-gray-900">{globalIndex + 1}</td>
                   <td className="p-4 whitespace-nowrap">{format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
                   <td className="p-4">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium
@@ -346,6 +361,34 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-4">
+          <span className="text-sm text-gray-500">
+            顯示 {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, reports.length)}，共 {reports.length} 筆
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+            >
+              上一頁
+            </button>
+            <span className="text-sm text-gray-600 font-medium px-3">
+              {page + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+            >
+              下一頁
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Photo Preview Modal */}
       {previewPhoto && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Plus, Filter, Search, ArrowUpDown, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { Report } from './types';
@@ -31,6 +31,7 @@ export default function App() {
   const GAS_URL = import.meta.env.VITE_GAS_URL || '';
 
   // Load from cache initially
+  // Only fetch once on mount — filter switching is instant via useMemo
   useEffect(() => {
     const cachedData = localStorage.getItem('reports_cache');
     if (cachedData) {
@@ -43,7 +44,7 @@ export default function App() {
     }
     console.log("GAS_URL Status:", GAS_URL ? "Configured" : "NOT CONFIGURED! Check .env");
     fetchReports();
-  }, [filter]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchReports = async () => {
     if (!GAS_URL) {
@@ -55,12 +56,15 @@ export default function App() {
       if (reports.length === 0) setLoading(true);
       
       const timestamp = new Date().getTime();
-      const res = await fetch(`${GAS_URL}?location_type=${filter}&include_photos=false&_t=${timestamp}`);
+      // Always fetch ALL reports; frontend filters by type for instant switching
+      const res = await fetch(`${GAS_URL}?location_type=all&include_photos=false&_t=${timestamp}`);
       const data = await res.json();
       const reportData = Array.isArray(data) ? data : [];
       
       setReports(reportData);
       localStorage.setItem('reports_cache', JSON.stringify(reportData));
+      // Background preload photos for visible reports
+      preloadPhotos(reportData);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
     } finally {
@@ -90,12 +94,67 @@ export default function App() {
     }
   };
 
+  // Batch preload photos in background using idle time
+  const preloadPhotos = useCallback((reportData: Report[]) => {
+    if (!GAS_URL) return;
+    const idsToPreload = reportData
+      .filter(r => r.id && !r.photo && !photoCache.current.has(r.id))
+      .map(r => r.id!);
+    if (idsToPreload.length === 0) return;
+
+    // Load in batches of 20 using requestIdleCallback for non-blocking
+    const BATCH_SIZE = 20;
+    let batchIdx = 0;
+    const loadBatch = () => {
+      const batch = idsToPreload.slice(batchIdx * BATCH_SIZE, (batchIdx + 1) * BATCH_SIZE);
+      if (batch.length === 0) return;
+      fetch(GAS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'getPhotos', ids: batch }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            Object.entries(data).forEach(([id, photo]) => {
+              if (photo) photoCache.current.set(Number(id), photo as string);
+            });
+          }
+          batchIdx++;
+          if (batchIdx * BATCH_SIZE < idsToPreload.length) {
+            if ('requestIdleCallback' in window) {
+              (window as any).requestIdleCallback(loadBatch);
+            } else {
+              setTimeout(loadBatch, 100);
+            }
+          }
+        })
+        .catch(() => { /* silent */ });
+    };
+
+    // Start first batch after a short delay to let UI settle
+    setTimeout(() => {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(loadBatch);
+      } else {
+        loadBatch();
+      }
+    }, 500);
+  }, [GAS_URL]);
+
+  // Step 1: Filter by location_type (mainline/ramp/all) — instant, no API call
+  const typeFilteredReports = useMemo(() => {
+    if (filter === 'all') return reports;
+    return reports.filter(r => r.location_type === filter);
+  }, [reports, filter]);
+
+  // Step 2: Filter by active tab
   const tabFilteredReports = useMemo(() => {
     if (activeTab === 'assignments') {
-      return reports.filter(r => !!r.assign_type);
+      return typeFilteredReports.filter(r => !!r.assign_type);
     }
-    return reports;
-  }, [reports, activeTab]);
+    return typeFilteredReports;
+  }, [typeFilteredReports, activeTab]);
 
   const uniqueHighways = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.highway))).filter(Boolean), [tabFilteredReports]);
   const uniqueDamages = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.damage_condition))).filter(Boolean), [tabFilteredReports]);
