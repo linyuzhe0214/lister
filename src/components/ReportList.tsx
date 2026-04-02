@@ -34,6 +34,11 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   const [scrollState, setScrollState] = useState({ left: false, right: false });
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
+  // Table drag state
+  const isDraggingTable = useRef(false);
+  const tableDragStartOffset = useRef(0);
+  const tableDragScrollLeft = useRef(0);
+
   const checkScroll = useCallback(() => {
     const el = tableContainerRef.current;
     if (!el) return;
@@ -56,6 +61,35 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
       window.removeEventListener('resize', checkScroll);
     };
   }, [checkScroll, reports]);
+
+  const handleTableMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0 || !tableContainerRef.current) return;
+    const target = e.target as HTMLElement;
+    const isInteractive = target.closest('button, input, a, select, option, .sticky-left, .sticky-right');
+    if (isInteractive) return;
+
+    isDraggingTable.current = true;
+    tableContainerRef.current.style.cursor = 'grabbing';
+    tableContainerRef.current.style.userSelect = 'none';
+    tableDragStartOffset.current = e.pageX - tableContainerRef.current.offsetLeft;
+    tableDragScrollLeft.current = tableContainerRef.current.scrollLeft;
+  };
+
+  const handleTableMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingTable.current || !tableContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - tableContainerRef.current.offsetLeft;
+    const walk = (x - tableDragStartOffset.current) * 1.5;
+    tableContainerRef.current.scrollLeft = tableDragScrollLeft.current - walk;
+  };
+
+  const handleTableMouseUpOrLeave = () => {
+    isDraggingTable.current = false;
+    if (tableContainerRef.current) {
+      tableContainerRef.current.style.cursor = '';
+      tableContainerRef.current.style.userSelect = '';
+    }
+  };
 
   // Reset page when reports change (e.g. filter change)
   const prevReportsLen = useRef(reports.length);
@@ -211,12 +245,16 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
         <div 
           ref={tableContainerRef}
-          className="overflow-x-auto custom-scrollbar"
+          className="overflow-auto max-h-[calc(100vh-240px)] custom-scrollbar"
+          onMouseDown={handleTableMouseDown}
+          onMouseMove={handleTableMouseMove}
+          onMouseUp={handleTableMouseUpOrLeave}
+          onMouseLeave={handleTableMouseUpOrLeave}
         >
           <table className="w-full text-left border-collapse min-w-[1200px]">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100 text-sm font-medium text-gray-500">
-                <th className={`p-4 w-10 sticky-left bg-gray-50 z-30 ${scrollState.left ? 'shadow-left' : ''}`}>
+              <tr className="bg-gray-50 text-sm font-medium text-gray-500">
+                <th className={`p-4 w-10 sticky top-0 left-0 bg-gray-50 z-40 shadow-[0_1px_0_0_#f3f4f6] ${scrollState.left ? 'shadow-left' : ''}`}>
                   <button 
                     onClick={toggleSelectAll}
                     className="text-gray-400 hover:text-indigo-600 transition-colors"
@@ -228,27 +266,27 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                     )}
                   </button>
                 </th>
-                <th className="p-4 whitespace-nowrap">項次</th>
-                <th className="p-4 whitespace-nowrap">登錄時間</th>
-                <th className="p-4 whitespace-nowrap">位置類型</th>
-                <th className="p-4 whitespace-nowrap">國道/方向</th>
-                <th className="p-4 whitespace-nowrap">
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">項次</th>
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">登錄時間</th>
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">位置類型</th>
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">國道/方向</th>
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">
                   {filter === 'mainline' ? '里程' : filter === 'ramp' ? '交流道名稱' : '里程/交流道名稱'}
                 </th>
-                <th className="p-4 whitespace-nowrap">
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">
                   {filter === 'mainline' ? '車道' : filter === 'ramp' ? '出口/入口' : '車道/出入口'}
                 </th>
-                <th className="p-4 min-w-[150px]">損壞狀況</th>
-                <th className="p-4 whitespace-nowrap">改善方式</th>
-                <th className="p-4 whitespace-nowrap">監造審查</th>
+                <th className="p-4 min-w-[150px] sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">損壞狀況</th>
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">改善方式</th>
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">監造審查</th>
                 {activeTab === 'assignments' && (
                   <>
-                    <th className="p-4 whitespace-nowrap">派工項目</th>
-                    <th className="p-4 whitespace-nowrap text-center">狀態</th>
+                    <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">派工項目</th>
+                    <th className="p-4 whitespace-nowrap text-center sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">狀態</th>
                   </>
                 )}
-                <th className="p-4 whitespace-nowrap">完成時間</th>
-                <th className={`p-4 whitespace-nowrap text-center sticky-right bg-gray-50 z-30 ${scrollState.right ? 'shadow-right' : ''}`}>操作 / 照片</th>
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">完成時間</th>
+                <th className={`p-4 whitespace-nowrap text-center sticky top-0 right-0 bg-gray-50 z-40 shadow-[0_1px_0_0_#f3f4f6] ${scrollState.right ? 'shadow-right' : ''}`}>操作 / 照片</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

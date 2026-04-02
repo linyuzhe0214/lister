@@ -5,14 +5,12 @@
     position: sticky;
     left: 0;
     z-index: 20;
-    background-color: inherit;
   }
   
   .sticky-right {
     position: sticky;
     right: 0;
     z-index: 20;
-    background-color: inherit;
   }
 
   .shadow-left::after {
