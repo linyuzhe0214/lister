@@ -311,6 +311,10 @@ export default function App() {
       
       setReports(optimisticData);
       setIsFormOpen(false);
+      // 編輯完成後留在對應的 location_type 頁面
+      if (data.location_type === 'ramp' || data.location_type === 'mainline') {
+        setFilter(data.location_type);
+      }
 
       const payload = isEditing 
         ? { action: 'update', id: editingReport.id, data }
