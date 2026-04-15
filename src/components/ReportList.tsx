@@ -92,11 +92,10 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   };
 
   // Reset page when reports change (e.g. filter change)
-  const prevReportsLen = useRef(reports.length);
-  if (reports.length !== prevReportsLen.current) {
-    prevReportsLen.current = reports.length;
-    if (page !== 0) setPage(0);
-  }
+  // MUST use useEffect — never setState during render
+  useEffect(() => {
+    setPage(0);
+  }, [reports.length]);
 
   const totalPages = Math.ceil(reports.length / PAGE_SIZE);
   const paginatedReports = useMemo(() => 
@@ -575,7 +574,7 @@ const ReportRow = React.memo(({
         </button>
       </td>
       <td className="p-4 font-medium text-gray-900">{index + 1}</td>
-      <td className="p-4 whitespace-nowrap">{format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
+      <td className="p-4 whitespace-nowrap">{report.log_time ? (() => { try { return format(new Date(report.log_time), 'yyyy/MM/dd HH:mm'); } catch { return String(report.log_time); } })() : '-'}</td>
       <td className="p-4">
         <span className={`px-2.5 py-1 rounded-full text-xs font-medium
           ${report.location_type === 'mainline' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -631,7 +630,7 @@ const ReportRow = React.memo(({
           </td>
         </>
       )}
-      <td className="p-4 whitespace-nowrap">{report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
+      <td className="p-4 whitespace-nowrap">{report.completion_time ? (() => { try { return format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm'); } catch { return String(report.completion_time); } })() : '-'}</td>
       <td className={`p-4 text-center sticky-right z-20 ${isSelected ? 'bg-indigo-50/30' : (isCompleted ? 'bg-green-50/50' : 'bg-white')} ${scrollState.right ? 'shadow-right' : ''}`}>
         <div className="flex items-center justify-center gap-1.5 sm:gap-2">
           {/* Photo Preview Button */}

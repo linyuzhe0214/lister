@@ -71,7 +71,12 @@ export default function App() {
       const reportData = Array.isArray(data) ? data : [];
       
       setReports(reportData);
-      localStorage.setItem('reports_cache', JSON.stringify(reportData));
+      try {
+        localStorage.setItem('reports_cache', JSON.stringify(reportData));
+      } catch (e) {
+        console.warn('localStorage quota exceeded, clearing cache');
+        localStorage.removeItem('reports_cache');
+      }
       preloadPhotos(reportData);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
@@ -213,10 +218,14 @@ export default function App() {
 
     if (startDate || endDate) {
       result = result.filter(r => {
-        const reportDate = format(new Date(r.log_time), 'yyyy-MM-dd');
-        const isAfterStart = startDate ? reportDate >= startDate : true;
-        const isBeforeEnd = endDate ? reportDate <= endDate : true;
-        return isAfterStart && isBeforeEnd;
+        try {
+          const reportDate = format(new Date(r.log_time), 'yyyy-MM-dd');
+          const isAfterStart = startDate ? reportDate >= startDate : true;
+          const isBeforeEnd = endDate ? reportDate <= endDate : true;
+          return isAfterStart && isBeforeEnd;
+        } catch {
+          return true;
+        }
       });
     }
 
@@ -285,7 +294,7 @@ export default function App() {
       });
       
       // With mode: 'no-cors', the response is opaque. We assume success unless an exception occurs.
-      localStorage.setItem('reports_cache', JSON.stringify(newReports));
+      try { localStorage.setItem('reports_cache', JSON.stringify(newReports)); } catch (e) { localStorage.removeItem('reports_cache'); }
     } catch (err: any) {
       console.error('Failed to update report:', err);
       alert('更新失敗：' + (err.message || '請重新整理網頁再試一次'));
@@ -333,7 +342,7 @@ export default function App() {
       // Since it's no-cors, we refresh anyway.
       setEditingReport(null);
       // Update local storage immediately with the optimistic/new data
-      localStorage.setItem('reports_cache', JSON.stringify(optimisticData));
+      try { localStorage.setItem('reports_cache', JSON.stringify(optimisticData)); } catch (e) { localStorage.removeItem('reports_cache'); }
       await fetchReports();
     } catch (error: any) {
       console.error('Failed to save report:', error);
