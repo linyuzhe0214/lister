@@ -319,9 +319,9 @@ function updateReport(id, data) {
     // Check both original and lowercase keys in the data object
     const val = data[header] !== undefined ? data[header] : data[h];
     
-    if (val !== undefined) {
-      // Don't overwrite photo or coordinates with empty string if they already have data
-      if ((h === 'photo' || h === 'coordinates') && String(val).trim() === '' && allData[rowIndex - 1][i]) {
+    if (val !== undefined && val !== null) {
+      // Don't overwrite photo with empty string if it already has data
+      if (h === 'photo' && String(val).trim() === '' && allData[rowIndex - 1][i]) {
         return allData[rowIndex - 1][i];
       }
       return val;

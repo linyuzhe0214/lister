@@ -17,7 +17,9 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   const formattedInitialData = initialData ? {
     ...initialData,
     log_time: initialData.log_time ? format(new Date(initialData.log_time), "yyyy-MM-dd'T'HH:mm") : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-    completion_time: initialData.completion_time ? format(new Date(initialData.completion_time), "yyyy-MM-dd'T'HH:mm") : ''
+    completion_time: initialData.completion_time ? format(new Date(initialData.completion_time), "yyyy-MM-dd'T'HH:mm") : '',
+    // Normalize coordinates: null/undefined from Sheets must become '' to avoid sending null
+    coordinates: initialData.coordinates ?? ''
   } : undefined;
 
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<Report>({
@@ -421,13 +423,22 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                 <div className="flex-1 relative">
                   <input 
                     {...register('coordinates')}
-                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm"
+                    className="w-full pl-10 pr-9 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all text-sm"
                     placeholder="經緯度座標 (例如: 24.123, 120.456)"
-                    readOnly
                   />
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                     <MapPin size={20} />
                   </div>
+                  {coordinates && (
+                    <button
+                      type="button"
+                      onClick={() => setValue('coordinates', '')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 transition-colors"
+                      title="清除座標"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
                 </div>
                 <button 
                   type="button"
