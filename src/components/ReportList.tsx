@@ -25,7 +25,14 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   const lastPanOffset = useRef({ x: 0, y: 0 });
   const lastPinchDist = useRef<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [viewedIds, setViewedIds] = useState<Set<number>>(new Set());
+  const [viewedIds, setViewedIds] = useState<Set<number>>(() => {
+    try {
+      const raw = localStorage.getItem('viewed_photo_ids');
+      return raw ? new Set<number>(JSON.parse(raw)) : new Set<number>();
+    } catch {
+      return new Set<number>();
+    }
+  });
   const [assigningReportId, setAssigningReportId] = useState<number | null>(null);
   const [completingReportId, setCompletingReportId] = useState<number | null>(null);
   const [completionDate, setCompletionDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -104,8 +111,14 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   , [reports, page]);
 
   const handlePreviewPhoto = async (report: Report) => {
-    // Mark as viewed
-    if (report.id) setViewedIds(prev => new Set(prev).add(report.id!));
+    // Mark as viewed and persist
+    if (report.id) {
+      setViewedIds(prev => {
+        const next = new Set(prev).add(report.id!);
+        try { localStorage.setItem('viewed_photo_ids', JSON.stringify([...next])); } catch {}
+        return next;
+      });
+    }
 
     if (report.photo) {
       setPreviewPhoto(report.photo);
@@ -642,30 +655,25 @@ const ReportRow = React.memo(({
         <div className="flex items-center justify-center gap-1.5 sm:gap-2">
           {/* Photo Preview Button */}
           <div 
-            className={`w-9 h-9 rounded-lg overflow-hidden border cursor-pointer transition-all flex items-center justify-center flex-shrink-0 relative group
-              ${isViewed
-                ? 'border-green-300 bg-green-50 ring-1 ring-green-200'
-                : 'border-gray-200 bg-gray-100 hover:border-indigo-300'
-              }`}
+            className="w-9 h-9 rounded-lg overflow-hidden border cursor-pointer transition-all flex items-center justify-center flex-shrink-0 relative group"
+            style={isViewed
+              ? { borderColor: '#86efac', filter: 'grayscale(0.55) brightness(0.9)' }
+              : { borderColor: '#e5e7eb' }}
             onClick={() => onPhotoClick(report)}
-            title={isViewed ? '已看過（點擊再次預覽）' : '查看照片'}
+            title={isViewed ? '已看過' : '查看照片'}
           >
             {report.photo ? (
-              <img src={report.photo} alt="縮圖" className={`w-full h-full object-cover transition-opacity ${isViewed ? 'opacity-70' : 'opacity-100 group-hover:opacity-80'}`} />
+              <img src={report.photo} alt="縮圖" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
             ) : (
-              <Camera size={18} className={isViewed ? 'text-green-400' : 'text-gray-400'} />
+              <Camera size={18} className="text-gray-400" />
             )}
-            {/* Viewed checkmark overlay */}
+            {/* Two-state badge: viewed = green check, unviewed = nothing */}
             {isViewed && (
-              <div className="absolute inset-0 flex items-center justify-center bg-green-500/20 backdrop-blur-[1px]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 drop-shadow">
-                  <polyline points="20 6 9 17 4 12" />
+              <span className="absolute bottom-0.5 right-0.5 flex items-center justify-center w-3.5 h-3.5 bg-green-500 rounded-full shadow">
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="1.5 5 4 7.5 8.5 2.5" />
                 </svg>
-              </div>
-            )}
-            {/* Unviewed orange dot (only when has no photo embedded yet) */}
-            {!isViewed && !report.photo && (
-              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-400 rounded-full border-2 border-white" title="尚未查看" />
+              </span>
             )}
           </div>
 
