@@ -169,9 +169,9 @@ export default function App() {
     return typeFilteredReports;
   }, [typeFilteredReports, activeTab]);
 
-  const uniqueHighways = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.highway))).filter(Boolean), [tabFilteredReports]);
-  const uniqueDamages = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.damage_condition))).filter(Boolean), [tabFilteredReports]);
-  const uniqueAssignTypes = useMemo(() => Array.from(new Set(reports.map(r => r.assign_type))).filter(Boolean) as string[], [reports]);
+  const uniqueHighways = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.highway))).filter(Boolean).map(String), [tabFilteredReports]);
+  const uniqueDamages = useMemo(() => Array.from(new Set(tabFilteredReports.map(r => r.damage_condition))).filter(Boolean).map(String), [tabFilteredReports]);
+  const uniqueAssignTypes = useMemo(() => Array.from(new Set(reports.map(r => r.assign_type))).filter(Boolean).map(String) as string[], [reports]);
 
   // Helper function to parse mileage string (e.g. "174k+000", "181") into a number for precise sorting and filtering
   const parseMileage = (m: string | number) => {

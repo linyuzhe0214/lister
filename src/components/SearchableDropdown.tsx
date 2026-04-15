@@ -26,7 +26,7 @@ export function SearchableDropdown({ options, value, onChange, placeholder, allL
   }, []);
 
   const filteredOptions = options.filter(option => 
-    option.toLowerCase().includes(searchTerm.toLowerCase())
+    String(option).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
