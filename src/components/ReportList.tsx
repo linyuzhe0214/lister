@@ -25,6 +25,7 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   const lastPanOffset = useRef({ x: 0, y: 0 });
   const lastPinchDist = useRef<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [viewedIds, setViewedIds] = useState<Set<number>>(new Set());
   const [assigningReportId, setAssigningReportId] = useState<number | null>(null);
   const [completingReportId, setCompletingReportId] = useState<number | null>(null);
   const [completionDate, setCompletionDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -103,6 +104,9 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   , [reports, page]);
 
   const handlePreviewPhoto = async (report: Report) => {
+    // Mark as viewed
+    if (report.id) setViewedIds(prev => new Set(prev).add(report.id!));
+
     if (report.photo) {
       setPreviewPhoto(report.photo);
       setZoomScale(1);
@@ -295,6 +299,7 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                   report={report}
                   index={page * PAGE_SIZE + index}
                   isSelected={selectedIds.includes(report.id!)}
+                  isViewed={report.id ? viewedIds.has(report.id) : false}
                   activeTab={activeTab}
                   filter={filter}
                   scrollState={scrollState}
@@ -524,7 +529,8 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
 const ReportRow = React.memo(({ 
   report, 
   index, 
-  isSelected, 
+  isSelected,
+  isViewed,
   activeTab, 
   filter, 
   scrollState,
@@ -541,6 +547,7 @@ const ReportRow = React.memo(({
   report: Report;
   index: number;
   isSelected: boolean;
+  isViewed: boolean;
   activeTab: string;
   filter: string;
   scrollState: { left: boolean; right: boolean };
@@ -635,14 +642,30 @@ const ReportRow = React.memo(({
         <div className="flex items-center justify-center gap-1.5 sm:gap-2">
           {/* Photo Preview Button */}
           <div 
-            className="w-9 h-9 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center flex-shrink-0"
+            className={`w-9 h-9 rounded-lg overflow-hidden border cursor-pointer transition-all flex items-center justify-center flex-shrink-0 relative group
+              ${isViewed
+                ? 'border-green-300 bg-green-50 ring-1 ring-green-200'
+                : 'border-gray-200 bg-gray-100 hover:border-indigo-300'
+              }`}
             onClick={() => onPhotoClick(report)}
-            title="查看照片"
+            title={isViewed ? '已看過（點擊再次預覽）' : '查看照片'}
           >
             {report.photo ? (
-              <img src={report.photo} alt="縮圖" className="w-full h-full object-cover" />
+              <img src={report.photo} alt="縮圖" className={`w-full h-full object-cover transition-opacity ${isViewed ? 'opacity-70' : 'opacity-100 group-hover:opacity-80'}`} />
             ) : (
-              <Camera size={18} className="text-gray-400" />
+              <Camera size={18} className={isViewed ? 'text-green-400' : 'text-gray-400'} />
+            )}
+            {/* Viewed checkmark overlay */}
+            {isViewed && (
+              <div className="absolute inset-0 flex items-center justify-center bg-green-500/20 backdrop-blur-[1px]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 drop-shadow">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+            )}
+            {/* Unviewed orange dot (only when has no photo embedded yet) */}
+            {!isViewed && !report.photo && (
+              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-orange-400 rounded-full border-2 border-white" title="尚未查看" />
             )}
           </div>
 
