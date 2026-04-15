@@ -169,20 +169,21 @@ export default function App() {
   const uniqueAssignTypes = useMemo(() => Array.from(new Set(reports.map(r => r.assign_type))).filter(Boolean) as string[], [reports]);
 
   // Helper function to parse mileage string (e.g. "174k+000", "181") into a number for precise sorting and filtering
-  const parseMileage = (m: string) => {
-    if (!m) return 0;
-    const match = m.match(/(\d+)[kK]\+?(\d+)?/);
+  const parseMileage = (m: string | number) => {
+    if (m === null || m === undefined || m === '') return 0;
+    const strM = String(m);
+    const match = strM.match(/(\d+)[kK]\+?(\d+)?/);
     if (match) {
       return parseInt(match[1] || '0') * 1000 + parseInt(match[2] || '0');
     }
     
     // If it's just a number like "181", treat it as "181k+000" (181000)
-    const pureNumberMatch = m.match(/^\d+$/);
+    const pureNumberMatch = strM.match(/^\d+$/);
     if (pureNumberMatch) {
-      return parseInt(m, 10) * 1000;
+      return parseInt(strM, 10) * 1000;
     }
 
-    return parseFloat(m.replace(/[^\d.]/g, '')) || 0;
+    return parseFloat(strM.replace(/[^\d.]/g, '')) || 0;
   };
 
   const uniqueMileages = useMemo(() => Array.from(new Set<string>(tabFilteredReports.map(r => r.mileage)))
