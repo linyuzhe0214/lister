@@ -485,6 +485,7 @@ export default function App() {
         <th>里程/車道</th>
         <th>損壞狀況</th>
         <th>改善方式</th>
+        <th>後續處理方式</th>
         ${activeTab === 'assignments' ? '<th>派工項目</th><th>完成狀態</th>' : ''}
         <th class="photo-cell">現場照片</th>
       </tr>
@@ -498,6 +499,7 @@ export default function App() {
           <td>${report.mileage}<br>${report.lane}</td>
           <td>${report.damage_condition}</td>
           <td>${report.improvement_method}</td>
+          <td>${report.follow_up_method || '-'}</td>
           ${activeTab === 'assignments' ? `
             <td>${report.assign_type || '-'}</td>
             <td>${report.is_assigned_completed ? '已完成' : '未完成'}</td>

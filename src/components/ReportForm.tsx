@@ -163,9 +163,9 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto backdrop-blur-sm">
-      <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl w-full max-w-2xl min-h-screen sm:min-h-0 flex flex-col relative my-0 sm:my-8 transition-all">
-        <div className="sticky top-0 bg-white/95 backdrop-blur-md z-30 flex justify-between items-center p-5 sm:p-6 border-b border-gray-100 rounded-t-none sm:rounded-t-2xl">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-0 sm:p-4 z-50 backdrop-blur-sm">
+      <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] flex flex-col relative transition-all overflow-hidden">
+        <div className="bg-white/95 backdrop-blur-md z-30 flex justify-between items-center p-5 sm:p-6 border-b border-gray-100 shrink-0">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{initialData ? '編輯巡查紀錄' : '新增巡查紀錄'}</h2>
           <button onClick={onCancel} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all">
             <X size={24} />
@@ -246,7 +246,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
           </div>
         )}
 
-        <form onSubmit={handleSubmit(submitForm)} className="flex-1 p-5 sm:p-8 space-y-8">
+        <form onSubmit={handleSubmit(submitForm)} className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-8">
           {/* Photo Upload Section */}
           <div className="space-y-3">
             <label className="block text-sm font-semibold text-gray-700 ml-1">現場照片 <span className="text-red-500">*</span></label>

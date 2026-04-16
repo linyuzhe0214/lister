@@ -43,7 +43,7 @@ export function SearchableDropdown({ options, value, onChange, placeholder, allL
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 w-56 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+        <div className="absolute z-50 w-56 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
           <div className="p-2 border-b border-gray-100">
             <div className="relative">
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />

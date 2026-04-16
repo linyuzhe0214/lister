@@ -295,6 +295,7 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                 <th className="p-4 min-w-[150px] sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">損壞狀況</th>
                 <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">改善方式</th>
                 <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">監造審查</th>
+                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">後續處理方式</th>
                 {activeTab === 'assignments' && (
                   <>
                     <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">派工項目</th>
@@ -620,6 +621,7 @@ const ReportRow = React.memo(({
       <td className="p-4">{report.damage_condition}</td>
       <td className="p-4 whitespace-nowrap">{report.improvement_method}</td>
       <td className="p-4 whitespace-nowrap">{report.supervision_review || '-'}</td>
+      <td className="p-4 whitespace-nowrap">{report.follow_up_method || '-'}</td>
       {activeTab === 'assignments' && (
         <>
           <td className="p-4 whitespace-nowrap">
