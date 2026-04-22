@@ -129,9 +129,10 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   };
 
   const submitForm = (data: Report) => {
-    if (data.coordinates) {
-      data.coordinates = data.coordinates.trim();
-    }
+    // 確保強制抓取 coordinates 欄位，避免 react-hook-form 未註冊導致遺失
+    const currentCoordinates = watch('coordinates');
+    data.coordinates = currentCoordinates ? currentCoordinates.trim() : '';
+    
     if (!photoPreview) {
       alert('請上傳照片');
       return;
@@ -221,13 +222,13 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                           const pasted = e.clipboardData.getData('Text');
                           console.log("Pasted coordinates:", pasted);
                           if (pasted) {
-                            setValue('coordinates', pasted);
+                            setValue('coordinates', pasted, { shouldValidate: true, shouldDirty: true });
                             setShowMapPicker(false);
                           }
                         }}
                         onChange={(e) => {
                           console.log("Typing coordinates:", e.target.value);
-                          setValue('coordinates', e.target.value);
+                          setValue('coordinates', e.target.value, { shouldValidate: true, shouldDirty: true });
                         }}
                         value={watch('coordinates') || ''}
                       />

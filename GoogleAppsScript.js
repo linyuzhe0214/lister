@@ -58,18 +58,19 @@ function doGet(e) {
   let reports = data.map(row => {
     let obj = {};
     headers.forEach((header, i) => {
-      const h = String(header).toLowerCase();
+      const h = String(header).toLowerCase().trim();
       // If includePhotos is false, return empty string for photo to save bandwidth
       if (h === 'photo' && !includePhotos) {
         obj[h] = ''; 
       } else {
         // Only set value if current obj value is empty or undefined, 
-        // prioritizing non-empty values from duplicate (case-insensitive) columns
+        // prioritizing non-empty values from duplicate columns
         if (obj[h] === undefined || obj[h] === '') {
+          obj[h] = row[i] !== undefined ? row[i] : '';
+        } else if (row[i] !== undefined && row[i] !== '') {
+          // If we already have a value but found another non-empty one, overwrite it
+          // This ensures if a new column was added later, it takes precedence if it has data
           obj[h] = row[i];
-        } else if (row[i] !== '') {
-          // If we already have a value but found another non-empty one, could log it,
-          // but for now just prioritize the first non-empty we find
         }
       }
     });
@@ -246,8 +247,8 @@ function getPhoto(id) {
   const sheet = ensureSheet();
   const allData = sheet.getDataRange().getValues();
   const headers = allData[0];
-  const idIndex = headers.indexOf('id');
-  const photoIndex = headers.indexOf('photo');
+  const idIndex = headers.findIndex(h => String(h).toLowerCase().trim() === 'id');
+  const photoIndex = headers.findIndex(h => String(h).toLowerCase().trim() === 'photo');
   
   for (let i = 1; i < allData.length; i++) {
     if (String(allData[i][idIndex]) === String(id)) {
@@ -261,8 +262,8 @@ function getPhotos(ids) {
   const sheet = ensureSheet();
   const allData = sheet.getDataRange().getValues();
   const headers = allData[0];
-  const idIndex = headers.indexOf('id');
-  const photoIndex = headers.indexOf('photo');
+  const idIndex = headers.findIndex(h => String(h).toLowerCase().trim() === 'id');
+  const photoIndex = headers.findIndex(h => String(h).toLowerCase().trim() === 'photo');
   
   if (idIndex === -1 || photoIndex === -1) return responseJson({ error: 'Columns not found' }, 500);
 
@@ -285,9 +286,10 @@ function createReport(data) {
   const createdAt = new Date().toISOString();
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const rowData = headers.map(header => {
-    if (header === 'id') return id;
-    if (header === 'created_at') return createdAt;
-    return data[header] !== undefined ? data[header] : '';
+    const h = String(header).toLowerCase().trim();
+    if (h === 'id') return id;
+    if (h === 'created_at') return createdAt;
+    return (data[header] !== undefined ? data[header] : (data[h] !== undefined ? data[h] : ''));
   });
   sheet.appendRow(rowData);
   return responseJson({ id: id, ...data });
@@ -299,7 +301,9 @@ function updateReport(id, data) {
   if (allData.length <= 1) return responseJson({ error: 'Report not found' }, 404);
   
   const headers = allData[0];
-  const idIndex = headers.indexOf('id');
+  const idIndex = headers.findIndex(h => String(h).toLowerCase().trim() === 'id');
+  if (idIndex === -1) return responseJson({ error: 'ID column not found' }, 500);
+  
   let rowIndex = -1;
   for (let i = 1; i < allData.length; i++) {
     if (String(allData[i][idIndex]) === String(id)) {
@@ -311,13 +315,14 @@ function updateReport(id, data) {
   if (rowIndex === -1) return responseJson({ error: 'Report not found' }, 404);
   
   const rowData = headers.map((header, i) => {
-    const h = String(header).toLowerCase();
+    const h = String(header).toLowerCase().trim();
     if (h === 'id') return id;
-    if (h === 'created_at') return allData[rowIndex - 1][i] || ''; 
-    if (h === 'log_time') return allData[rowIndex - 1][i]; 
+    if (h === 'created_at') return allData[rowIndex - 1][i] !== undefined ? allData[rowIndex - 1][i] : ''; 
+    if (h === 'log_time') return allData[rowIndex - 1][i] !== undefined ? allData[rowIndex - 1][i] : ''; 
     
     // Check both original and lowercase keys in the data object
-    const val = data[header] !== undefined ? data[header] : data[h];
+    let val = data[header];
+    if (val === undefined) val = data[h];
     
     if (val !== undefined && val !== null) {
       // Don't overwrite photo with empty string if it already has data
@@ -339,7 +344,7 @@ function deleteReport(id) {
   const allData = sheet.getDataRange().getValues();
   if (allData.length <= 1) return responseJson({ error: 'Report not found' }, 404);
   
-  const idIndex = allData[0].indexOf('id');
+  const idIndex = allData[0].findIndex(h => String(h).toLowerCase().trim() === 'id');
   let rowIndex = -1;
   for (let i = 1; i < allData.length; i++) {
     if (String(allData[i][idIndex]) === String(id)) {
