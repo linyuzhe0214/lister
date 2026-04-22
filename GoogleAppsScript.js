@@ -115,6 +115,19 @@ function doPost(e) {
     const payload = JSON.parse(e.postData.contents);
     const action = payload.action;
     
+    // Debug Logger: Write raw payload to a new sheet to trace what the backend receives
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      let debugSheet = ss.getSheetByName('DebugLogs');
+      if (!debugSheet) {
+        debugSheet = ss.insertSheet('DebugLogs');
+        debugSheet.appendRow(['Timestamp', 'Action', 'Payload']);
+      }
+      debugSheet.appendRow([new Date().toISOString(), action, JSON.stringify(payload)]);
+    } catch (logErr) {
+      // Ignore logging errors
+    }
+    
     if (action === 'create') return createReport(payload.data);
     if (action === 'update') return updateReport(payload.id, payload.data);
     if (action === 'delete') return deleteReport(payload.id);
