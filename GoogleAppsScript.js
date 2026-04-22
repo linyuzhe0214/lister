@@ -337,9 +337,17 @@ function updateReport(id, data) {
     let val = data[header];
     if (val === undefined) val = data[h];
     
+    // Explicitly fallback for coordinates and location_type if header matches loosely
+    if (val === undefined && h.includes('coordinate')) val = data['coordinates'];
+    if (val === undefined && h.includes('location')) val = data['location_type'];
+    
     if (val !== undefined && val !== null) {
       // Don't overwrite photo with empty string if it already has data
       if (h === 'photo' && String(val).trim() === '' && allData[rowIndex - 1][i]) {
+        return allData[rowIndex - 1][i];
+      }
+      // Don't overwrite coordinates with empty string if it already has data
+      if (h.includes('coordinate') && String(val).trim() === '' && allData[rowIndex - 1][i]) {
         return allData[rowIndex - 1][i];
       }
       return val;

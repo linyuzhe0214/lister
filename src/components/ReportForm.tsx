@@ -22,7 +22,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
     coordinates: initialData.coordinates ?? ''
   } : undefined;
 
-  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<Report>({
+  const { register, handleSubmit, formState: { errors }, setValue, watch, getValues } = useForm<Report>({
     defaultValues: formattedInitialData || {
       location_type: 'mainline',
       improvement_method: '優先處理',
@@ -130,7 +130,8 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
 
   const submitForm = (data: Report) => {
     // 確保強制抓取 coordinates 欄位，避免 react-hook-form 未註冊導致遺失
-    const currentCoordinates = watch('coordinates');
+    const currentCoordinates = getValues('coordinates');
+    console.log("Submitting form. react-hook-form data:", data.coordinates, "getValues:", currentCoordinates);
     data.coordinates = currentCoordinates ? currentCoordinates.trim() : '';
     
     if (!photoPreview) {
