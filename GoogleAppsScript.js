@@ -339,7 +339,7 @@ function updateReport(id, data) {
     
     // Explicitly fallback for coordinates and location_type if header matches loosely
     if (val === undefined && h.includes('coordinate')) val = data['coordinates'] || data['_force_coordinates'];
-    if (h === 'coordinates' || h === 'coordinate') val = data['coordinates'] || data['_force_coordinates'];
+    if (h === 'coordinates' || h === 'coordinate' || h === '座標' || h.includes('座標')) val = data['coordinates'] || data['_force_coordinates'];
     if (val === undefined && h.includes('location')) val = data['location_type'];
     
     if (val !== undefined && val !== null) {
@@ -348,7 +348,7 @@ function updateReport(id, data) {
         return allData[rowIndex - 1][i];
       }
       // Don't overwrite coordinates with empty string if it already has data
-      if (h.includes('coordinate') && String(val).trim() === '' && allData[rowIndex - 1][i]) {
+      if ((h.includes('coordinate') || h.includes('座標')) && String(val).trim() === '' && allData[rowIndex - 1][i]) {
         return allData[rowIndex - 1][i];
       }
       return val;
@@ -357,6 +357,12 @@ function updateReport(id, data) {
     return allData[rowIndex - 1][i] !== undefined ? allData[rowIndex - 1][i] : '';
   });
   
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let debugSheet = ss.getSheetByName('DebugLogs');
+    debugSheet.appendRow([new Date().toISOString(), 'update_rowData', JSON.stringify(rowData)]);
+  } catch (e) {}
+
   sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
   return responseJson({ success: true });
 }
