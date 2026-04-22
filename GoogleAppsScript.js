@@ -25,6 +25,7 @@ function ensureSheet() {
     
     if (missingHeaders.length > 0) {
       sheet.getRange(1, lastCol + 1, 1, missingHeaders.length).setValues([missingHeaders]);
+      SpreadsheetApp.flush();
     }
   }
   return sheet;
@@ -129,7 +130,10 @@ function doPost(e) {
     }
     
     if (action === 'create') return createReport(payload.data);
-    if (action === 'update') return updateReport(payload.id, payload.data);
+    if (action === 'update') {
+      ensureSheet(); // Make sure sheet has all columns before updating
+      return updateReport(payload.id, payload.data);
+    }
     if (action === 'delete') return deleteReport(payload.id);
     if (action === 'bulkDelete') return bulkDelete(payload.ids);
     if (action === 'getPhoto') return getPhoto(payload.id);
