@@ -338,7 +338,8 @@ function updateReport(id, data) {
     if (val === undefined) val = data[h];
     
     // Explicitly fallback for coordinates and location_type if header matches loosely
-    if (val === undefined && h.includes('coordinate')) val = data['coordinates'];
+    if (val === undefined && h.includes('coordinate')) val = data['coordinates'] || data['_force_coordinates'];
+    if (h === 'coordinates' || h === 'coordinate') val = data['coordinates'] || data['_force_coordinates'];
     if (val === undefined && h.includes('location')) val = data['location_type'];
     
     if (val !== undefined && val !== null) {

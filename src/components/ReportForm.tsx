@@ -133,6 +133,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
     const currentCoordinates = getValues('coordinates');
     console.log("Submitting form. react-hook-form data:", data.coordinates, "getValues:", currentCoordinates);
     data.coordinates = currentCoordinates ? currentCoordinates.trim() : '';
+    (data as any)._force_coordinates = data.coordinates;
     
     if (!photoPreview) {
       alert('請上傳照片');
