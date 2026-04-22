@@ -14,19 +14,32 @@ function ensureSheet() {
     sheet = ss.insertSheet(SHEET_NAME);
     sheet.appendRow(targetHeaders);
     sheet.setFrozenRows(1);
+    SpreadsheetApp.flush();
+    return sheet;
   }
   
-  // Check for missing headers and add them (case-insensitive)
-  const lastCol = sheet.getLastColumn();
-  if (lastCol > 0) {
-    const currentHeaders = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-    const currentHeadersLower = currentHeaders.map(h => String(h).toLowerCase());
-    const missingHeaders = targetHeaders.filter(h => currentHeadersLower.indexOf(h.toLowerCase()) === -1);
-    
-    if (missingHeaders.length > 0) {
-      sheet.getRange(1, lastCol + 1, 1, missingHeaders.length).setValues([missingHeaders]);
-      SpreadsheetApp.flush();
+  // Read first row (up to 50 columns to be safe)
+  const currentHeaders = sheet.getRange(1, 1, 1, 50).getValues()[0];
+  const currentHeadersLower = currentHeaders.map(h => String(h).toLowerCase().trim());
+  
+  const missingHeaders = targetHeaders.filter(h => {
+    const target = h.toLowerCase();
+    if (target === 'coordinates') {
+      return currentHeadersLower.indexOf('coordinates') === -1 && 
+             currentHeadersLower.indexOf('coordinate') === -1 && 
+             currentHeadersLower.indexOf('座標') === -1;
     }
+    return currentHeadersLower.indexOf(target) === -1;
+  });
+
+  if (missingHeaders.length > 0) {
+    // Find first truly empty column in row 1
+    let firstEmptyCol = 1;
+    while (firstEmptyCol <= 50 && currentHeaders[firstEmptyCol - 1] !== "") {
+      firstEmptyCol++;
+    }
+    sheet.getRange(1, firstEmptyCol, 1, missingHeaders.length).setValues([missingHeaders]);
+    SpreadsheetApp.flush();
   }
   return sheet;
 }
@@ -317,7 +330,17 @@ function updateReport(id, data) {
   const allData = sheet.getDataRange().getValues();
   if (allData.length <= 1) return responseJson({ error: 'Report not found' }, 404);
   
-  const headers = allData[0];
+  // Get headers directly from row 1 to be safe (up to 50 columns)
+  const headersRow = sheet.getRange(1, 1, 1, 50).getValues()[0];
+  const headers = headersRow.filter(h => h !== "");
+  
+  // Debug Logger: Log headers found
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let debugSheet = ss.getSheetByName('DebugLogs');
+    debugSheet.appendRow([new Date().toISOString(), 'update_headers', JSON.stringify(headers)]);
+  } catch (e) {}
+
   const idIndex = headers.findIndex(h => String(h).toLowerCase().trim() === 'id');
   if (idIndex === -1) return responseJson({ error: 'ID column not found' }, 500);
   
