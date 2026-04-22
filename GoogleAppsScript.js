@@ -314,13 +314,36 @@ function createReport(data) {
   const sheet = ensureSheet();
   const id = new Date().getTime();
   const createdAt = new Date().toISOString();
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  
+  // Get headers directly from row 1 to be safe (up to 50 columns)
+  const headersRow = sheet.getRange(1, 1, 1, 50).getValues()[0];
+  const headers = headersRow.filter(h => h !== "");
+  
   const rowData = headers.map(header => {
     const h = String(header).toLowerCase().trim();
     if (h === 'id') return id;
     if (h === 'created_at') return createdAt;
-    return (data[header] !== undefined ? data[header] : (data[h] !== undefined ? data[h] : ''));
+    
+    // Check both original and lowercase keys in the data object
+    let val = data[header];
+    if (val === undefined) val = data[h];
+    
+    // Explicitly fallback for coordinates and location_type if header matches loosely
+    if (h === 'coordinates' || h === 'coordinate' || h === '座標' || h.includes('座標')) {
+      val = data['coordinates'] || data['_force_coordinates'] || val;
+    }
+    if (val === undefined && h.includes('location')) val = data['location_type'];
+    
+    return (val !== undefined && val !== null) ? val : '';
   });
+  
+  // Debug Logger: Log row data being created
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let debugSheet = ss.getSheetByName('DebugLogs');
+    debugSheet.appendRow([new Date().toISOString(), 'create_rowData', JSON.stringify(rowData)]);
+  } catch (e) {}
+
   sheet.appendRow(rowData);
   return responseJson({ id: id, ...data });
 }
