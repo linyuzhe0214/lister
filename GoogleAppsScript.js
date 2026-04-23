@@ -353,67 +353,93 @@ function updateReport(id, data) {
   const allData = sheet.getDataRange().getValues();
   if (allData.length <= 1) return responseJson({ error: 'Report not found' }, 404);
   
-  // Get headers directly from row 1 to be safe (up to 50 columns)
+  // Read headers from row 1 (up to 50 columns)
   const headersRow = sheet.getRange(1, 1, 1, 50).getValues()[0];
-  const headers = headersRow.filter(h => h !== "");
-  
-  // Debug Logger: Log headers found
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let debugSheet = ss.getSheetByName('DebugLogs');
-    debugSheet.appendRow([new Date().toISOString(), 'update_headers', JSON.stringify(headers)]);
-  } catch (e) {}
+  // Build a map: lowercased header → column index (1-based) so we never mismatch allData vs headers
+  const headerColMap = {}; // { lowercase_header: colIndex1Based }
+  const headerList = []; // [ { raw, lower, col } ]
+  for (let c = 0; c < headersRow.length; c++) {
+    const raw = headersRow[c];
+    if (raw === '' || raw === null || raw === undefined) continue;
+    const lower = String(raw).toLowerCase().trim();
+    headerColMap[lower] = c + 1; // 1-based
+    headerList.push({ raw: raw, lower: lower, col: c + 1 });
+  }
 
-  const idIndex = headers.findIndex(h => String(h).toLowerCase().trim() === 'id');
-  if (idIndex === -1) return responseJson({ error: 'ID column not found' }, 500);
-  
+  const idCol = headerColMap['id'];
+  if (!idCol) return responseJson({ error: 'ID column not found' }, 500);
+
+  // Find the target row using allData (idCol - 1 for 0-based index)
   let rowIndex = -1;
   for (let i = 1; i < allData.length; i++) {
-    if (String(allData[i][idIndex]) === String(id)) {
-      rowIndex = i + 1;
+    if (String(allData[i][idCol - 1]) === String(id)) {
+      rowIndex = i + 1; // 1-based sheet row
       break;
     }
   }
-  
   if (rowIndex === -1) return responseJson({ error: 'Report not found' }, 404);
-  
-  const rowData = headers.map((header, i) => {
-    const h = String(header).toLowerCase().trim();
-    if (h === 'id') return id;
-    if (h === 'created_at') return allData[rowIndex - 1][i] !== undefined ? allData[rowIndex - 1][i] : ''; 
-    if (h === 'log_time') return allData[rowIndex - 1][i] !== undefined ? allData[rowIndex - 1][i] : ''; 
-    
-    // Check both original and lowercase keys in the data object
-    let val = data[header];
+
+  // Read the existing row directly from sheet to avoid allData column-count mismatch
+  const totalCols = headerList[headerList.length - 1].col;
+  const existingRow = sheet.getRange(rowIndex, 1, 1, totalCols).getValues()[0];
+
+  // Build the updated row
+  const rowData = new Array(totalCols);
+  headerList.forEach(function(hdr) {
+    const c0 = hdr.col - 1; // 0-based index into rowData / existingRow
+    const h = hdr.lower;
+    const existing = existingRow[c0] !== undefined ? existingRow[c0] : '';
+
+    // Fields that must not change on update
+    if (h === 'id') { rowData[c0] = id; return; }
+    if (h === 'created_at') { rowData[c0] = existing; return; }
+    if (h === 'log_time') { rowData[c0] = existing; return; }
+
+    // Resolve submitted value
+    let val = data[hdr.raw];
     if (val === undefined) val = data[h];
-    
-    // Explicitly fallback for coordinates and location_type if header matches loosely
-    if (val === undefined && h.includes('coordinate')) val = data['coordinates'] || data['_force_coordinates'];
-    if (h === 'coordinates' || h === 'coordinate' || h === '座標' || h.includes('座標')) val = data['coordinates'] || data['_force_coordinates'];
-    if (val === undefined && h.includes('location')) val = data['location_type'];
-    
-    if (val !== undefined && val !== null) {
-      // Don't overwrite photo with empty string if it already has data
-      if (h === 'photo' && String(val).trim() === '' && allData[rowIndex - 1][i]) {
-        return allData[rowIndex - 1][i];
+
+    // Explicit coordinates handling
+    if (h === 'coordinates' || h === 'coordinate' || h.includes('座標') || h.includes('coordinate')) {
+      const submitted = data['coordinates'] !== undefined ? data['coordinates']
+                      : data['_force_coordinates'] !== undefined ? data['_force_coordinates']
+                      : val;
+      // If a non-empty value was submitted, always write it
+      if (submitted !== undefined && submitted !== null && String(submitted).trim() !== '') {
+        rowData[c0] = String(submitted).trim();
+      } else {
+        // Submitted empty — preserve existing value to avoid accidental clear
+        rowData[c0] = existing;
       }
-      // Don't overwrite coordinates with empty string if it already has data
-      if ((h.includes('coordinate') || h.includes('座標')) && String(val).trim() === '' && allData[rowIndex - 1][i]) {
-        return allData[rowIndex - 1][i];
-      }
-      return val;
+      return;
     }
-    
-    return allData[rowIndex - 1][i] !== undefined ? allData[rowIndex - 1][i] : '';
+
+    // Photo: never overwrite with empty
+    if (h === 'photo') {
+      if (val !== undefined && val !== null && String(val).trim() !== '') {
+        rowData[c0] = val;
+      } else {
+        rowData[c0] = existing;
+      }
+      return;
+    }
+
+    // All other fields
+    if (val !== undefined && val !== null) {
+      rowData[c0] = val;
+    } else {
+      rowData[c0] = existing;
+    }
   });
-  
+
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let debugSheet = ss.getSheetByName('DebugLogs');
-    debugSheet.appendRow([new Date().toISOString(), 'update_rowData', JSON.stringify(rowData)]);
+    debugSheet.appendRow([new Date().toISOString(), 'update_rowData', JSON.stringify({ id: id, coordinates: data['coordinates'] })]);
   } catch (e) {}
 
-  sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
+  sheet.getRange(rowIndex, 1, 1, totalCols).setValues([rowData]);
+  SpreadsheetApp.flush();
   return responseJson({ success: true });
 }
 

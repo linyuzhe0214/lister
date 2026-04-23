@@ -330,20 +330,42 @@ export default function App() {
         ? { action: 'update', id: editingReport.id, data }
         : { action: 'create', data };
 
+      // Save submitted data for post-fetch merge (prevents stale server data from erasing optimistic update)
+      const submittedId = isEditing ? editingReport.id : null;
+      const submittedData = { ...data };
+
       console.log("Submitting Payload:", { action: payload.action, coordinates: data.coordinates });
 
-      const res = await fetch(GAS_URL, {
+      fetch(GAS_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
       });
       
-      // Since it's no-cors, we refresh anyway.
       setEditingReport(null);
       // Update local storage immediately with the optimistic/new data
       try { localStorage.setItem('reports_cache', JSON.stringify(optimisticData)); } catch (e) { localStorage.removeItem('reports_cache'); }
+      
+      // GAS backend takes 1-3s to commit the write. Fetching immediately returns stale data.
+      await new Promise(resolve => setTimeout(resolve, isEditing ? 5000 : 2000));
+      
+      // Fetch fresh data, then merge back submitted fields if server returned stale empty values
       await fetchReports();
+      if (submittedId !== null) {
+        setReports(prev => prev.map(r => {
+          if (r.id !== submittedId) return r;
+          // For each submitted field, if server returned empty but we submitted a value, keep submitted value
+          const merged = { ...r };
+          (Object.keys(submittedData) as (keyof Report)[]).forEach(key => {
+            const submitted = submittedData[key];
+            if (submitted !== undefined && submitted !== '' && (r[key] === undefined || r[key] === '')) {
+              (merged as any)[key] = submitted;
+            }
+          });
+          return merged;
+        }));
+      }
     } catch (error: any) {
       console.error('Failed to save report:', error);
       alert('儲存失敗：' + (error.message || '請確認網路狀態與 Google Apps Script 是否部署為最新版本'));
