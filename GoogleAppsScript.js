@@ -1,38 +1,46 @@
-ㄏation_type', 'photo', 'coordinates', 'created_at'
+const SHEET_NAME = 'Reports';
+
+// 自動檢查並建立表單與標題列
+function ensureSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  const targetHeaders = [
+    'id', 'item_number', 'log_time', 'highway', 'direction', 'mileage', 'lane',
+    'damage_condition', 'improvement_method', 'supervision_review',
+    'follow_up_method', 'completion_time', 'location_type', 'photo', 'coordinates', 'created_at'
   ];
 
-if (!sheet) {
-  sheet = ss.insertSheet(SHEET_NAME);
-  sheet.appendRow(targetHeaders);
-  sheet.setFrozenRows(1);
-  SpreadsheetApp.flush();
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.appendRow(targetHeaders);
+    sheet.setFrozenRows(1);
+    SpreadsheetApp.flush();
+    return sheet;
+  }
+
+  // Read first row (up to 50 columns to be safe)
+  const currentHeaders = sheet.getRange(1, 1, 1, 50).getValues()[0];
+  const currentHeadersLower = currentHeaders.map(h => String(h).toLowerCase().trim());
+
+  const missingHeaders = targetHeaders.filter(h => {
+    const target = h.toLowerCase();
+    if (target === 'coordinates') {
+      return currentHeadersLower.indexOf('coordinates') === -1 &&
+             currentHeadersLower.indexOf('coordinate') === -1 &&
+             currentHeadersLower.indexOf('座標') === -1;
+    }
+    return currentHeadersLower.indexOf(target) === -1;
+  });
+
+  if (missingHeaders.length > 0) {
+    let firstEmptyCol = 1;
+    while (firstEmptyCol <= 50 && currentHeaders[firstEmptyCol - 1] !== "") {
+      firstEmptyCol++;
+    }
+    sheet.getRange(1, firstEmptyCol, 1, missingHeaders.length).setValues([missingHeaders]);
+    SpreadsheetApp.flush();
+  }
   return sheet;
-}
-
-// Read first row (up to 50 columns to be safe)
-const currentHeaders = sheet.getRange(1, 1, 1, 50).getValues()[0];
-const currentHeadersLower = currentHeaders.map(h => String(h).toLowerCase().trim());
-
-const missingHeaders = targetHeaders.filter(h => {
-  const target = h.toLowerCase();
-  if (target === 'coordinates') {
-    return currentHeadersLower.indexOf('coordinates') === -1 &&
-      currentHeadersLower.indexOf('coordinate') === -1 &&
-      currentHeadersLower.indexOf('座標') === -1;
-  }
-  return currentHeadersLower.indexOf(target) === -1;
-});
-
-if (missingHeaders.length > 0) {
-  // Find first truly empty column in row 1
-  let firstEmptyCol = 1;
-  while (firstEmptyCol <= 50 && currentHeaders[firstEmptyCol - 1] !== "") {
-    firstEmptyCol++;
-  }
-  sheet.getRange(1, firstEmptyCol, 1, missingHeaders.length).setValues([missingHeaders]);
-  SpreadsheetApp.flush();
-}
-return sheet;
 }
 
 function ensureAssignSheet() {
