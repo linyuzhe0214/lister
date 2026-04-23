@@ -129,19 +129,6 @@ function doPost(e) {
     const payload = JSON.parse(e.postData.contents);
     const action = payload.action;
     
-    // Debug Logger: Write raw payload to a new sheet to trace what the backend receives
-    try {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      let debugSheet = ss.getSheetByName('DebugLogs');
-      if (!debugSheet) {
-        debugSheet = ss.insertSheet('DebugLogs');
-        debugSheet.appendRow(['Timestamp', 'Action', 'Payload']);
-      }
-      debugSheet.appendRow([new Date().toISOString(), action, JSON.stringify(payload)]);
-    } catch (logErr) {
-      // Ignore logging errors
-    }
-    
     if (action === 'create') return createReport(payload.data);
     if (action === 'update') {
       ensureSheet(); // Make sure sheet has all columns before updating
@@ -337,13 +324,6 @@ function createReport(data) {
     return (val !== undefined && val !== null) ? val : '';
   });
   
-  // Debug Logger: Log row data being created
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    let debugSheet = ss.getSheetByName('DebugLogs');
-    debugSheet.appendRow([new Date().toISOString(), 'create_rowData', JSON.stringify(rowData)]);
-  } catch (e) {}
-
   sheet.appendRow(rowData);
   return responseJson({ id: id, ...data });
 }
