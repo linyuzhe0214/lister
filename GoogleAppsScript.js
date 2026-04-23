@@ -363,73 +363,41 @@ function updateReport(id, data) {
   const existingRow = sheet.getRange(rowIndex, 1, 1, totalCols).getValues()[0];
 
   try {
-    // Build the updated row
-    const rowData = new Array(totalCols);
     headerList.forEach(function (hdr) {
-      const c0 = hdr.col - 1; // 0-based index into rowData / existingRow
       const h = hdr.lower;
-      const existing = existingRow[c0] !== undefined ? existingRow[c0] : '';
-
+      
       // Fields that must not change on update
-      if (h === 'id') { rowData[c0] = id; return; }
-      if (h === 'created_at') { rowData[c0] = existing; return; }
-      if (h === 'log_time') { rowData[c0] = existing; return; }
+      if (h === 'id' || h === 'created_at' || h === 'log_time') return;
 
       // Resolve submitted value
       let val = data[hdr.raw];
       if (val === undefined) val = data[h];
-
+      
       // Explicit coordinates handling
       if (h === 'coordinates' || h === 'coordinate' || h.includes('座標') || h.includes('coordinate')) {
-        const submitted = data['coordinates'] !== undefined ? data['coordinates']
+        let submitted = data['coordinates'] !== undefined ? data['coordinates']
           : data['_force_coordinates'] !== undefined ? data['_force_coordinates']
-            : val;
-        // If a non-empty value was submitted, always write it
-        if (submitted !== undefined && submitted !== null && String(submitted).trim() !== '') {
-          rowData[c0] = String(submitted).trim();
-        } else {
-          // Submitted empty — preserve existing value to avoid accidental clear
-          rowData[c0] = existing;
+          : val;
+        // 如果有傳送座標才更新
+        if (submitted !== undefined && submitted !== null) {
+          sheet.getRange(rowIndex, hdr.col).setValue(String(submitted).trim());
         }
         return;
       }
 
-      // Photo: never overwrite with empty
+      // 真正的 PATCH 行為：如果前端沒傳這個欄位，就直接跳過，不寫入！
+      if (val === undefined) return;
+
+      // Photo: skip if empty (though frontend shouldn't send empty)
       if (h === 'photo') {
-        if (val !== undefined && val !== null && String(val).trim() !== '') {
-          rowData[c0] = val;
-        } else {
-          rowData[c0] = existing;
+        if (val !== null && String(val).trim() !== '') {
+          sheet.getRange(rowIndex, hdr.col).setValue(val);
         }
         return;
       }
 
-      // All other fields
-      if (val !== undefined && val !== null) {
-        rowData[c0] = val;
-      } else {
-        rowData[c0] = existing;
-      }
-    });
-
-    // Write each field individually.
-    // Photo is SKIPPED unless a new photo is explicitly submitted,
-    // because the existing base64 photo may exceed the 50000 char cell limit.
-    const submittedPhoto = data['photo'] || data['Photo'] || '';
-    const hasNewPhoto = submittedPhoto && String(submittedPhoto).trim().length > 0;
-
-    headerList.forEach(function (hdr) {
-      const h = hdr.lower;
-      const c0 = hdr.col - 1;
-      if (h === 'photo') {
-        if (hasNewPhoto) {
-          sheet.getRange(rowIndex, hdr.col).setValue(submittedPhoto);
-        }
-        // else: leave existing photo untouched
-        return;
-      }
-      const cellVal = rowData[c0];
-      sheet.getRange(rowIndex, hdr.col).setValue(cellVal !== undefined ? cellVal : '');
+      // All other fields that were explicitly sent
+      sheet.getRange(rowIndex, hdr.col).setValue(val);
     });
 
     SpreadsheetApp.flush();

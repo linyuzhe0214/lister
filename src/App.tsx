@@ -326,24 +326,39 @@ export default function App() {
         setFilter(data.location_type);
       }
 
-      const dataToSend = { ...data };
+      let dataToSend: any = {};
       if (isEditing) {
-        // 如果編輯時有載入舊照片，且使用者沒有更換照片，就不傳送 photo 欄位，減少 GAS 寫入負擔
+        // 找出有修改的欄位 (Diff)
+        for (const key in data) {
+          if (Object.prototype.hasOwnProperty.call(data, key)) {
+            const k = key as keyof Report;
+            if (data[k] !== editingReport[k]) {
+              dataToSend[k] = data[k];
+            }
+          }
+        }
+        // 照片特別處理：如果一樣就不送
         const cachedPhoto = photoCache.current.get(editingReport.id!);
-        if (cachedPhoto && dataToSend.photo === cachedPhoto) {
+        if (cachedPhoto && data.photo === cachedPhoto) {
           delete dataToSend.photo;
         }
+        // 如果有送 coordinates，附加上 force 確保後端吃到
+        if (dataToSend.coordinates !== undefined) {
+          dataToSend._force_coordinates = dataToSend.coordinates;
+        }
+      } else {
+        dataToSend = { ...data };
       }
 
       const payload = isEditing 
         ? { action: 'update', id: editingReport.id, data: dataToSend }
         : { action: 'create', data: dataToSend };
 
-      // Save submitted data for post-fetch merge (prevents stale server data from erasing optimistic update)
+      // Save submitted data for post-fetch merge
       const submittedId = isEditing ? editingReport.id : null;
       const submittedData = { ...dataToSend };
 
-      console.log("Submitting Payload:", { action: payload.action, coordinates: dataToSend.coordinates });
+      console.log("Submitting Payload:", { action: payload.action, changedFields: Object.keys(dataToSend) });
 
       fetch(GAS_URL, {
         method: 'POST',
