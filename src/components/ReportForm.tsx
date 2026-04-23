@@ -85,12 +85,13 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
       reader.onloadend = () => {
         const img = new Image();
         img.onload = () => {
-          // 壓縮圖片
+          // 加強壓縮圖片以符合 GAS 單格 50000 字元限制
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const MAX_WIDTH = 1000;
-          const MAX_HEIGHT = 1000;
+          // 縮小最大尺寸
+          const MAX_WIDTH = 600;
+          const MAX_HEIGHT = 600;
 
           if (width > height) {
             if (width > MAX_WIDTH) {
@@ -109,7 +110,16 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
           
-          const base64String = canvas.toDataURL('image/jpeg', 0.6); // 降低質量以縮小體積
+          // 初始品質設為 0.5
+          let quality = 0.5;
+          let base64String = canvas.toDataURL('image/jpeg', quality);
+          
+          // 如果還是超過 45000 字元 (保留安全邊際)，繼續降低品質
+          while (base64String.length > 45000 && quality > 0.1) {
+            quality -= 0.1;
+            base64String = canvas.toDataURL('image/jpeg', quality);
+          }
+          
           setPhotoPreview(base64String);
           setValue('photo', base64String);
         };

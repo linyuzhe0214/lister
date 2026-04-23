@@ -326,15 +326,24 @@ export default function App() {
         setFilter(data.location_type);
       }
 
+      const dataToSend = { ...data };
+      if (isEditing) {
+        // 如果編輯時有載入舊照片，且使用者沒有更換照片，就不傳送 photo 欄位，減少 GAS 寫入負擔
+        const cachedPhoto = photoCache.current.get(editingReport.id!);
+        if (cachedPhoto && dataToSend.photo === cachedPhoto) {
+          delete dataToSend.photo;
+        }
+      }
+
       const payload = isEditing 
-        ? { action: 'update', id: editingReport.id, data }
-        : { action: 'create', data };
+        ? { action: 'update', id: editingReport.id, data: dataToSend }
+        : { action: 'create', data: dataToSend };
 
       // Save submitted data for post-fetch merge (prevents stale server data from erasing optimistic update)
       const submittedId = isEditing ? editingReport.id : null;
-      const submittedData = { ...data };
+      const submittedData = { ...dataToSend };
 
-      console.log("Submitting Payload:", { action: payload.action, coordinates: data.coordinates });
+      console.log("Submitting Payload:", { action: payload.action, coordinates: dataToSend.coordinates });
 
       fetch(GAS_URL, {
         method: 'POST',
