@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Filter, Search, ArrowUpDown, Download } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, Download, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { Report } from './types';
 import { ReportForm } from './components/ReportForm';
@@ -784,39 +784,79 @@ export default function App() {
               <div className="hidden lg:block h-8 w-px bg-gray-100 mx-1"></div>
               
               <div className="flex items-center gap-2 sm:col-span-2 lg:col-auto overflow-hidden">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  className="flex-1 lg:w-40 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
-                  title="開始日期"
-                />
+                <div className="flex-1 relative group">
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                    title="開始日期"
+                  />
+                  {startDate && (
+                    <button 
+                      onClick={() => setStartDate('')}
+                      className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
                 <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  className="flex-1 lg:w-40 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
-                  title="結束日期"
-                />
+                <div className="flex-1 relative group">
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                    title="結束日期"
+                  />
+                  {endDate && (
+                    <button 
+                      onClick={() => setEndDate('')}
+                      className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2 sm:col-span-2 lg:col-auto">
-                <input
-                  type="text"
-                  placeholder="起始里程 (如 181k)"
-                  value={mileageStart}
-                  onChange={e => setMileageStart(e.target.value)}
-                  className="flex-1 lg:w-36 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
-                />
+                <div className="flex-1 relative group">
+                  <input
+                    type="text"
+                    placeholder="起始里程 (如 181k)"
+                    value={mileageStart}
+                    onChange={e => setMileageStart(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                  />
+                  {mileageStart && (
+                    <button 
+                      onClick={() => setMileageStart('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
                 <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
-                <input
-                  type="text"
-                  placeholder="結束里程 (如 183k)"
-                  value={mileageEnd}
-                  onChange={e => setMileageEnd(e.target.value)}
-                  className="flex-1 lg:w-36 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
-                />
+                <div className="flex-1 relative group">
+                  <input
+                    type="text"
+                    placeholder="結束里程 (如 183k)"
+                    value={mileageEnd}
+                    onChange={e => setMileageEnd(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                  />
+                  {mileageEnd && (
+                    <button 
+                      onClick={() => setMileageEnd('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
