@@ -26,6 +26,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   // VITE_GAS_URL will be provided in .env
   const GAS_URL = import.meta.env.VITE_GAS_URL || '';
@@ -637,7 +638,7 @@ export default function App() {
               <div className="bg-indigo-600 text-white p-1.5 sm:p-2.5 rounded-xl shadow-lg shadow-indigo-200">
                 <Search size={22} className="sm:w-6 sm:h-6" />
               </div>
-              <h1 className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight whitespace-nowrap hidden xs:block">國道巡查</h1>
+              <h1 className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight whitespace-nowrap hidden sm:block">國道巡查</h1>
             </div>
             
             <div className="flex-1 max-w-md">
@@ -695,44 +696,70 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filters */}
-        <div className="flex flex-col gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 text-gray-500 font-medium mr-2">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {/* Mobile Filter Toggle */}
+        <div className="flex lg:hidden items-center justify-between mb-4 gap-3">
+          <button 
+            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border transition-all font-bold text-sm ${showMobileFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-700'}`}
+          >
+            <Filter size={18} />
+            {showMobileFilters ? '隱藏篩選' : '進階篩選'}
+          </button>
+          
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-sm">
+            <ArrowUpDown size={16} className="text-gray-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent border-none text-xs font-bold focus:ring-0 outline-none p-0 pr-6"
+            >
+              <option value="dateDesc">日期(新)</option>
+              <option value="dateAsc">日期(舊)</option>
+              <option value="mileageAsc">里程(小)</option>
+              <option value="mileageDesc">里程(大)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Filters Section */}
+        <div className={`${showMobileFilters ? 'flex' : 'hidden lg:flex'} flex-col gap-6 mb-8 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 animate-slide-up`}>
+          <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+            <div className="flex items-center gap-2 text-gray-500 font-bold hidden lg:flex">
               <Filter size={20} />
-              <span>篩選</span>
+              <span>篩選條件</span>
             </div>
-            <div className="flex gap-2 border-r border-gray-200 pr-4">
+            
+            <div className="grid grid-cols-3 sm:flex gap-2 lg:border-r lg:border-gray-100 lg:pr-5">
               <button 
                 onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                  ${filter === 'all' ? 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all
+                  ${filter === 'all' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' : 'text-gray-600 bg-gray-50 hover:bg-gray-100'}`}
               >
                 全部
               </button>
               <button 
                 onClick={() => setFilter('mainline')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                  ${filter === 'mainline' ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all
+                  ${filter === 'mainline' ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'text-gray-600 bg-gray-50 hover:bg-gray-100'}`}
               >
                 主線
               </button>
               <button 
                 onClick={() => setFilter('ramp')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                  ${filter === 'ramp' ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all
+                  ${filter === 'ramp' ? 'bg-amber-500 text-white shadow-md shadow-amber-100' : 'text-gray-600 bg-gray-50 hover:bg-gray-100'}`}
               >
                 匝道
               </button>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex items-center gap-3 flex-1">
               <SearchableDropdown
                 options={uniqueHighways}
                 value={filterHighway}
                 onChange={setFilterHighway}
-                placeholder="搜尋國道..."
+                placeholder="國道..."
                 allLabel="所有國道"
               />
 
@@ -740,7 +767,7 @@ export default function App() {
                 options={uniqueDamages}
                 value={filterDamage}
                 onChange={setFilterDamage}
-                placeholder="搜尋損壞狀況..."
+                placeholder="損壞狀況..."
                 allLabel="所有損壞狀況"
               />
 
@@ -749,58 +776,56 @@ export default function App() {
                   options={uniqueAssignTypes}
                   value={filterAssignType}
                   onChange={setFilterAssignType}
-                  placeholder="搜尋派工項目..."
+                  placeholder="派工項目..."
                   allLabel="所有派工項目"
                 />
               )}
-
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              
+              <div className="hidden lg:block h-8 w-px bg-gray-100 mx-1"></div>
+              
+              <div className="flex items-center gap-2 sm:col-span-2 lg:col-auto overflow-hidden">
                 <input
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="w-36 sm:w-44 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                  className="flex-1 lg:w-40 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                   title="開始日期"
                 />
-                <span className="text-gray-400 text-sm font-medium">至</span>
+                <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
                 <input
                   type="date"
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
-                  className="w-36 sm:w-44 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                  className="flex-1 lg:w-40 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                   title="結束日期"
                 />
               </div>
 
-              <div className="h-6 w-px bg-gray-200 mx-2 hidden lg:block"></div>
-
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-2 sm:col-span-2 lg:col-auto">
                 <input
                   type="text"
-                  placeholder="起始里程(如 181k+200)"
+                  placeholder="起始里程 (如 181k)"
                   value={mileageStart}
                   onChange={e => setMileageStart(e.target.value)}
-                  className="w-32 sm:w-40 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                  className="flex-1 lg:w-36 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
                 />
-                <span className="text-gray-400 text-sm font-medium">至</span>
+                <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
                 <input
                   type="text"
-                  placeholder="結束里程(如 183k+200)"
+                  placeholder="結束里程 (如 183k)"
                   value={mileageEnd}
                   onChange={e => setMileageEnd(e.target.value)}
-                  className="w-32 sm:w-40 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                  className="flex-1 lg:w-36 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
                 />
               </div>
             </div>
 
-            <div className="flex-1"></div>
-
-            <div className="flex items-center gap-2 border-l border-gray-200 pl-4">
+            <div className="hidden lg:flex items-center gap-2 border-l border-gray-100 pl-5">
               <ArrowUpDown size={16} className="text-gray-400" />
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'dateDesc' | 'dateAsc' | 'mileageAsc' | 'mileageDesc')}
-                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 outline-none"
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none cursor-pointer"
               >
                 <option value="dateDesc">日期 (新到舊)</option>
                 <option value="dateAsc">日期 (舊到新)</option>

@@ -178,9 +178,9 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-0 sm:p-4 z-50 backdrop-blur-sm">
       <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl w-full max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[90vh] flex flex-col relative transition-all overflow-hidden">
-        <div className="bg-white/95 backdrop-blur-md z-30 flex justify-between items-center p-5 sm:p-6 border-b border-gray-100 shrink-0">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">{initialData ? '編輯巡查紀錄' : '新增巡查紀錄'}</h2>
-          <button onClick={onCancel} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all">
+        <div className="bg-white/95 backdrop-blur-md z-30 flex justify-between items-center p-5 sm:p-7 border-b border-gray-100 shrink-0">
+          <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">{initialData ? '編輯巡查紀錄' : '新增巡查紀錄'}</h2>
+          <button onClick={onCancel} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all active:scale-90">
             <X size={24} />
           </button>
         </div>
@@ -298,12 +298,12 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                   )}
                 </div>
               ) : (
-                <div className="py-14 sm:py-10 flex flex-col items-center justify-center text-gray-500 group">
-                  <div className="mb-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100 group-hover:scale-110 transition-transform text-indigo-500">
-                    <Upload size={32} />
+                <div className="py-10 sm:py-14 flex flex-col items-center justify-center text-gray-500 group">
+                  <div className="mb-4 p-5 bg-white rounded-3xl shadow-xl shadow-indigo-100 border border-indigo-50 group-hover:scale-110 transition-transform text-indigo-600">
+                    <Camera size={36} />
                   </div>
-                  <p className="font-bold text-lg text-gray-900 mb-1">點擊上傳照片</p>
-                  <p className="text-sm text-gray-400">支援拍照或選擇 JPG, PNG 格式</p>
+                  <p className="font-black text-xl text-gray-900 mb-1">點擊拍攝或上傳</p>
+                  <p className="text-sm text-gray-400 font-medium">支援 JPG, PNG 格式</p>
                 </div>
               )}
               <input 
@@ -321,12 +321,12 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
             {/* Location Type */}
             <div className={`space-y-3 md:col-span-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
-              <label className="block text-sm font-semibold text-gray-700 ml-1">位置類型</label>
-              <div className="flex gap-4 p-1 bg-gray-50 rounded-xl w-fit">
+              <label className="block text-sm font-bold text-gray-700 ml-1">位置類型</label>
+              <div className="flex gap-2 p-1.5 bg-gray-100/50 rounded-2xl w-fit">
                 <button 
                   type="button"
                   onClick={() => setValue('location_type', 'mainline')}
-                  className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all
+                  className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold transition-all
                     ${locationType === 'mainline' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   <input type="radio" value="mainline" {...register('location_type')} className="hidden" />
@@ -335,7 +335,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                 <button 
                   type="button"
                   onClick={() => setValue('location_type', 'ramp')}
-                  className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all
+                  className={`flex items-center gap-2 px-8 py-2.5 rounded-xl text-sm font-bold transition-all
                     ${locationType === 'ramp' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-black/5' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   <input type="radio" value="ramp" {...register('location_type')} className="hidden" />
@@ -495,11 +495,11 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
             </div>
           </div>
 
-          <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-5 pb-10 sm:pb-6 flex gap-4 justify-end border-t border-gray-100 -mx-5 sm:-mx-8 px-5 sm:px-8">
-            <button type="button" onClick={onCancel} disabled={isSubmitting} className="px-8 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-50">
+          <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-5 pb-8 sm:pb-7 flex gap-4 justify-end border-t border-gray-100 -mx-5 sm:-mx-8 px-5 sm:px-8">
+            <button type="button" onClick={onCancel} disabled={isSubmitting} className="px-8 py-3.5 rounded-2xl font-black text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-50">
               取消
             </button>
-            <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none px-8 py-3 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2">
+            <button type="submit" disabled={isSubmitting} className="flex-1 sm:flex-none px-10 py-3.5 rounded-2xl font-black text-white bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2">
               {isSubmitting && <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/50 border-t-white"></div>}
               {isSubmitting ? '正在儲存...' : (initialData ? '更新紀錄' : '儲存紀錄')}
             </button>

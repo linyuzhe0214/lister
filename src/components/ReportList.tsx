@@ -261,7 +261,7 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
         <div 
           ref={tableContainerRef}
-          className="overflow-auto max-h-[calc(100vh-240px)] custom-scrollbar"
+          className="hidden md:block overflow-auto max-h-[calc(100vh-240px)] custom-scrollbar"
           onMouseDown={handleTableMouseDown}
           onMouseMove={handleTableMouseMove}
           onMouseUp={handleTableMouseUpOrLeave}
@@ -330,6 +330,29 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {paginatedReports.map((report, index) => (
+            <ReportCard
+              key={report.id}
+              report={report}
+              index={page * PAGE_SIZE + index}
+              isSelected={selectedIds.includes(report.id!)}
+              isViewed={report.id ? viewedIds.has(report.id) : false}
+              activeTab={activeTab}
+              toggleSelect={toggleSelect}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onAssign={onAssign}
+              onToggleComplete={onToggleComplete}
+              onPhotoClick={handlePreviewPhoto}
+              setAssigningReportId={setAssigningReportId}
+              setCompletingReportId={setCompletingReportId}
+              setCompletionDate={setCompletionDate}
+            />
+          ))}
         </div>
       </div>
 
@@ -721,3 +744,156 @@ const ReportRow = React.memo(({
 });
 
 ReportRow.displayName = 'ReportRow';
+
+const ReportCard = React.memo(({ 
+  report, 
+  index, 
+  isSelected,
+  isViewed,
+  activeTab, 
+  toggleSelect, 
+  onEdit, 
+  onDelete, 
+  onAssign, 
+  onToggleComplete, 
+  onPhotoClick,
+  setAssigningReportId,
+  setCompletingReportId,
+  setCompletionDate
+}: {
+  report: Report;
+  index: number;
+  isSelected: boolean;
+  isViewed: boolean;
+  activeTab: string;
+  toggleSelect: (id: number) => void;
+  onEdit: (report: Report) => void;
+  onDelete: (id: number) => void;
+  onAssign: (id: number, type: string) => void;
+  onToggleComplete: (id: number, completed: boolean, date?: string) => void;
+  onPhotoClick: (report: Report) => void;
+  setAssigningReportId: (id: number) => void;
+  setCompletingReportId: (id: number) => void;
+  setCompletionDate: (date: string) => void;
+}) => {
+  const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
+  
+  return (
+    <div className={`p-4 transition-all ${isSelected ? 'bg-indigo-50/50' : (isCompleted ? 'bg-green-50/30' : 'bg-white')} border-b border-gray-50 active:bg-gray-50`}>
+      <div className="flex items-start gap-4">
+        {/* Photo Thumbnail */}
+        <div 
+          className="w-24 h-24 rounded-2xl overflow-hidden border-2 relative shrink-0 shadow-sm"
+          style={isViewed ? { borderColor: '#86efac' } : { borderColor: '#f1f5f9' }}
+          onClick={() => onPhotoClick(report)}
+        >
+          {report.photo ? (
+            <img src={report.photo} alt="縮圖" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-300">
+              <Camera size={24} />
+            </div>
+          )}
+          {isViewed && (
+            <span className="absolute bottom-1 right-1 flex items-center justify-center w-5 h-5 bg-green-500 rounded-full shadow-sm border border-white">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1.5 5 4 7.5 8.5 2.5" />
+              </svg>
+            </span>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start mb-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-indigo-400">#{index + 1}</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider
+                ${report.location_type === 'mainline' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                {report.location_type === 'mainline' ? '主線' : '匝道'}
+              </span>
+            </div>
+            <button 
+              onClick={() => report.id && toggleSelect(report.id)}
+              className="text-gray-300"
+            >
+              {isSelected ? <CheckSquare size={22} className="text-indigo-600" /> : <Square size={22} />}
+            </button>
+          </div>
+
+          <h4 className="font-bold text-gray-900 truncate mb-0.5">
+            {report.highway} {report.direction}
+          </h4>
+          <p className="text-sm text-gray-600 font-medium flex items-center gap-1.5">
+            <MapPin size={14} className="text-indigo-500" />
+            {report.mileage} · {report.lane}
+          </p>
+          
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="px-2.5 py-1 bg-gray-100 rounded-lg text-[11px] font-bold text-gray-700">
+              {report.damage_condition}
+            </div>
+            {report.assign_type && (
+              <div className={`px-2.5 py-1 rounded-lg text-[11px] font-bold 
+                ${report.assign_type === '熱料刨鋪' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                {report.assign_type}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
+        <span className="text-[11px] text-gray-400 font-medium">
+          {report.log_time ? format(new Date(report.log_time), 'yyyy/MM/dd HH:mm') : '-'}
+        </span>
+        
+        <div className="flex items-center gap-1">
+          {activeTab === 'assignments' ? (
+            <button
+              onClick={() => {
+                if (report.id) {
+                  if (report.is_assigned_completed) {
+                    onToggleComplete(report.id, false);
+                  } else {
+                    setCompletingReportId(report.id);
+                    setCompletionDate(format(new Date(), 'yyyy-MM-dd'));
+                  }
+                }
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-black transition-all shadow-sm ${
+                report.is_assigned_completed 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-white border border-gray-200 text-gray-700'
+              }`}
+            >
+              {report.is_assigned_completed ? '已完成' : '標示完成'}
+            </button>
+          ) : (
+            <>
+              <button 
+                onClick={() => report.id && setAssigningReportId(report.id)}
+                className="p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl"
+              >
+                <AlertCircle size={20} />
+              </button>
+              <button 
+                onClick={() => onEdit(report)}
+                className="p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl"
+              >
+                <Pencil size={20} />
+              </button>
+            </>
+          )}
+          <button 
+            onClick={() => report.id && onDelete(report.id)}
+            className="p-2.5 text-gray-400 hover:text-red-500 rounded-xl"
+          >
+            <Trash2 size={20} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ReportCard.displayName = 'ReportCard';
