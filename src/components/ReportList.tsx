@@ -179,9 +179,9 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
 
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const scrollLeftStart = useRef(0);
+  const isTableDragging = useRef(false);
+  const tableStartX = useRef(0);
+  const tableScrollLeftStart = useRef(0);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -192,25 +192,25 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handleTableMouseDown = (e: React.MouseEvent) => {
     if (!scrollContainerRef.current) return;
-    isDragging.current = true;
-    startX.current = e.pageX - scrollContainerRef.current.offsetLeft;
-    scrollLeftStart.current = scrollContainerRef.current.scrollLeft;
+    isTableDragging.current = true;
+    tableStartX.current = e.pageX - scrollContainerRef.current.offsetLeft;
+    tableScrollLeftStart.current = scrollContainerRef.current.scrollLeft;
     scrollContainerRef.current.style.cursor = 'grabbing';
     scrollContainerRef.current.style.userSelect = 'none';
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging.current || !scrollContainerRef.current) return;
+  const handleTableMouseMove = (e: React.MouseEvent) => {
+    if (!isTableDragging.current || !scrollContainerRef.current) return;
     e.preventDefault();
     const x = e.pageX - scrollContainerRef.current.offsetLeft;
-    const walk = (x - startX.current) * 1.5; // Scroll speed
-    scrollContainerRef.current.scrollLeft = scrollLeftStart.current - walk;
+    const walk = (x - tableStartX.current) * 1.5; // Scroll speed
+    scrollContainerRef.current.scrollLeft = tableScrollLeftStart.current - walk;
   };
 
-  const stopDragging = () => {
-    isDragging.current = false;
+  const stopTableDragging = () => {
+    isTableDragging.current = false;
     if (scrollContainerRef.current) {
       scrollContainerRef.current.style.cursor = 'grab';
       scrollContainerRef.current.style.removeProperty('user-select');
@@ -261,10 +261,10 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
         <div 
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={stopDragging}
-          onMouseLeave={stopDragging}
+          onMouseDown={handleTableMouseDown}
+          onMouseMove={handleTableMouseMove}
+          onMouseUp={stopTableDragging}
+          onMouseLeave={stopTableDragging}
           className="hidden md:block h-[calc(100vh-240px)] w-full overflow-auto customize-scrollbar"
           style={{ cursor: 'grab' }}
         >
