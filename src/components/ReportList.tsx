@@ -183,37 +183,49 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
   const tableStartX = useRef(0);
   const tableScrollLeftStart = useRef(0);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const handleScroll = (e: React.UIEvent<HTMLElement>) => {
     const target = e.currentTarget;
     if (target === scrollContainerRef.current && headerScrollRef.current) {
       headerScrollRef.current.scrollLeft = target.scrollLeft;
     } else if (target === headerScrollRef.current && scrollContainerRef.current) {
       scrollContainerRef.current.scrollLeft = target.scrollLeft;
     }
+    checkScroll(e);
   };
 
   const handleTableMouseDown = (e: React.MouseEvent) => {
-    if (!scrollContainerRef.current) return;
+    // Only handle left click
+    if (e.button !== 0) return;
+    
+    const container = e.currentTarget as HTMLDivElement;
+    if (!container) return;
+    
     isTableDragging.current = true;
-    tableStartX.current = e.pageX - scrollContainerRef.current.offsetLeft;
-    tableScrollLeftStart.current = scrollContainerRef.current.scrollLeft;
-    scrollContainerRef.current.style.cursor = 'grabbing';
-    scrollContainerRef.current.style.userSelect = 'none';
+    tableStartX.current = e.pageX - container.offsetLeft;
+    tableScrollLeftStart.current = container.scrollLeft;
+    container.style.cursor = 'grabbing';
+    container.style.userSelect = 'none';
   };
 
   const handleTableMouseMove = (e: React.MouseEvent) => {
-    if (!isTableDragging.current || !scrollContainerRef.current) return;
+    if (!isTableDragging.current) return;
+    
+    const container = e.currentTarget as HTMLDivElement;
+    if (!container) return;
+    
     e.preventDefault();
-    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const x = e.pageX - container.offsetLeft;
     const walk = (x - tableStartX.current) * 1.5; // Scroll speed
-    scrollContainerRef.current.scrollLeft = tableScrollLeftStart.current - walk;
+    container.scrollLeft = tableScrollLeftStart.current - walk;
   };
 
-  const stopTableDragging = () => {
+  const stopTableDragging = (e: React.MouseEvent) => {
+    if (!isTableDragging.current) return;
     isTableDragging.current = false;
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.style.cursor = 'grab';
-      scrollContainerRef.current.style.removeProperty('user-select');
+    const container = e.currentTarget as HTMLDivElement;
+    if (container) {
+      container.style.cursor = 'grab';
+      container.style.removeProperty('user-select');
     }
   };
 
@@ -253,26 +265,33 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
         <div 
           ref={headerScrollRef}
           onScroll={handleScroll}
-          className="overflow-x-auto border-b border-gray-50 bg-gray-50/50 customize-scrollbar"
+          className="overflow-x-auto border-b border-gray-50 bg-gray-50/50 custom-scrollbar"
         >
           <div className="min-w-[1200px] h-3 sm:h-1.5"></div>
         </div>
 
         <div 
-          ref={scrollContainerRef}
-          onScroll={handleScroll}
-          onMouseDown={handleTableMouseDown}
-          onMouseMove={handleTableMouseMove}
-          onMouseUp={stopTableDragging}
-          onMouseLeave={stopTableDragging}
-          className="hidden md:block h-[calc(100vh-240px)] w-full overflow-auto customize-scrollbar"
-          style={{ cursor: 'grab' }}
+          className="hidden md:block h-[calc(100vh-240px)] w-full"
         >
           <TableVirtuoso
             data={reports}
+            style={{ height: '100%', width: '100%' }}
+            scrollerRef={(ref) => { scrollContainerRef.current = ref as HTMLDivElement; }}
             endReached={handleEndReached}
-            onScroll={checkScroll}
+            onScroll={handleScroll}
             components={{
+              Scroller: React.forwardRef((props, ref) => (
+                <div 
+                  {...props} 
+                  ref={ref} 
+                  onMouseDown={handleTableMouseDown}
+                  onMouseMove={handleTableMouseMove}
+                  onMouseUp={stopTableDragging}
+                  onMouseLeave={stopTableDragging}
+                  className={`${props.className} custom-scrollbar`}
+                  style={{ ...props.style, cursor: 'grab' }}
+                />
+              )),
               Table: (props) => <table {...props} className="w-full text-left border-collapse min-w-[1200px]" />,
               TableHead: React.forwardRef((props, ref) => <thead {...props} ref={ref} className="bg-gray-50 text-sm font-medium text-gray-500 shadow-sm" />),
               TableRow: ({ item, ...props }: any) => {
