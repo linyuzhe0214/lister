@@ -687,7 +687,7 @@ export default function App() {
         </div>
 
         {/* Filters Section */}
-        <div className={`${showMobileFilters ? 'flex' : 'hidden lg:flex'} flex-col gap-6 mb-8 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 animate-slide-up`}>
+        <div className={`${showMobileFilters ? 'flex' : 'hidden lg:flex'} flex-col gap-6 mb-8 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 animate-slide-up sticky top-20 z-30`}>
           <div className="flex flex-col lg:flex-row lg:items-center gap-5">
             <div className="flex items-center gap-2 text-gray-500 font-bold hidden lg:flex">
               <Filter size={20} />

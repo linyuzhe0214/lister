@@ -177,6 +177,18 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
     }
   };
 
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target === scrollContainerRef.current && headerScrollRef.current) {
+      headerScrollRef.current.scrollLeft = target.scrollLeft;
+    } else if (target === headerScrollRef.current && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = target.scrollLeft;
+    }
+  };
+
   if (reports.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm p-12 text-center text-gray-500">
@@ -209,7 +221,20 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
       )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
-        <div className="hidden md:block h-[calc(100vh-240px)] w-full">
+        {/* Top Scrollbar (Visible on PC) */}
+        <div 
+          ref={headerScrollRef}
+          onScroll={handleScroll}
+          className="hidden md:block overflow-x-auto border-b border-gray-50 bg-gray-50/50 customize-scrollbar no-scrollbar"
+        >
+          <div className="min-w-[1200px] h-1.5"></div>
+        </div>
+
+        <div 
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="hidden md:block h-[calc(100vh-240px)] w-full overflow-auto customize-scrollbar"
+        >
           <TableVirtuoso
             data={reports}
             endReached={handleEndReached}

@@ -259,7 +259,11 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
           </div>
         )}
 
-        <form onSubmit={handleSubmit(submitForm)} className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-8">
+        <form 
+          onSubmit={handleSubmit(submitForm)} 
+          className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-8 customize-scrollbar overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {/* Photo Upload Section */}
           <div className="space-y-3">
             <label className="block text-sm font-semibold text-gray-700 ml-1">現場照片 <span className="text-red-500">*</span></label>
@@ -495,7 +499,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
             </div>
           </div>
 
-          <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-5 pb-8 sm:pb-7 flex gap-4 justify-end border-t border-gray-100 -mx-5 sm:-mx-8 px-5 sm:px-8">
+          <div className="sticky bottom-0 bg-white/95 backdrop-blur-md pt-5 pb-10 sm:pb-8 flex gap-4 justify-end border-t border-gray-100 -mx-5 sm:-mx-8 px-5 sm:px-8 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
             <button type="button" onClick={onCancel} disabled={isSubmitting} className="px-8 py-3.5 rounded-2xl font-black text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all active:scale-95 disabled:opacity-50">
               取消
             </button>
