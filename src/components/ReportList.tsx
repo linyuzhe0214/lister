@@ -193,7 +193,17 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
     checkScroll(e);
   };
 
-  const handleTableMouseDown = (e: React.MouseEvent) => {
+  const stopTableDragging = useCallback((e: React.MouseEvent) => {
+    if (!isTableDragging.current) return;
+    isTableDragging.current = false;
+    const container = e.currentTarget as HTMLDivElement;
+    if (container) {
+      container.style.cursor = 'grab';
+      container.style.removeProperty('user-select');
+    }
+  }, []);
+
+  const handleTableMouseDown = useCallback((e: React.MouseEvent) => {
     // Only handle left click
     if (e.button !== 0) return;
     
@@ -205,29 +215,18 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
     tableScrollLeftStart.current = container.scrollLeft;
     container.style.cursor = 'grabbing';
     container.style.userSelect = 'none';
-  };
+  }, []);
 
-  const handleTableMouseMove = (e: React.MouseEvent) => {
+  const handleTableMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isTableDragging.current) return;
     
     const container = e.currentTarget as HTMLDivElement;
     if (!container) return;
     
-    e.preventDefault();
     const x = e.pageX - container.offsetLeft;
     const walk = (x - tableStartX.current) * 1.5; // Scroll speed
     container.scrollLeft = tableScrollLeftStart.current - walk;
-  };
-
-  const stopTableDragging = (e: React.MouseEvent) => {
-    if (!isTableDragging.current) return;
-    isTableDragging.current = false;
-    const container = e.currentTarget as HTMLDivElement;
-    if (container) {
-      container.style.cursor = 'grab';
-      container.style.removeProperty('user-select');
-    }
-  };
+  }, []);
 
   if (reports.length === 0) {
     return (
@@ -279,11 +278,15 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
             scrollerRef={(ref) => { scrollContainerRef.current = ref as HTMLDivElement; }}
             endReached={handleEndReached}
             onScroll={handleScroll}
-            components={{
+            context={{ selectedIds, activeTab }}
+            components={useMemo(() => ({
               Scroller: React.forwardRef((props, ref) => (
                 <div 
                   {...props} 
-                  ref={ref} 
+                  ref={(node) => {
+                    if (typeof ref === 'function') ref(node);
+                    else if (ref) (ref as any).current = node;
+                  }} 
                   onMouseDown={handleTableMouseDown}
                   onMouseMove={handleTableMouseMove}
                   onMouseUp={stopTableDragging}
@@ -294,8 +297,9 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
               )),
               Table: (props) => <table {...props} className="w-full text-left border-collapse min-w-[1200px]" />,
               TableHead: React.forwardRef((props, ref) => <thead {...props} ref={ref} className="bg-gray-50 text-sm font-medium text-gray-500 shadow-sm" />),
-              TableRow: ({ item, ...props }: any) => {
+              TableRow: ({ item, context, ...props }: any) => {
                 const report = item as Report;
+                const { selectedIds, activeTab } = context;
                 const isSelected = report.id ? selectedIds.includes(report.id) : false;
                 const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
                 let rowBg = 'hover:bg-gray-50/50';
@@ -304,7 +308,7 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
                 return <tr {...props} className={`transition-colors text-sm text-gray-800 ${rowBg}`} />;
               },
               TableBody: React.forwardRef((props, ref) => <tbody {...props} ref={ref} className="divide-y divide-gray-100" />),
-            }}
+            }), [handleTableMouseDown, handleTableMouseMove, stopTableDragging])}
             fixedHeaderContent={() => (
               <tr>
                 <th className={`p-4 w-10 sticky top-0 left-0 bg-gray-50 z-40 shadow-[0_1px_0_0_#f3f4f6] ${scrollState.left ? 'shadow-left' : ''}`}>
