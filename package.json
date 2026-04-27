@@ -21,6 +21,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.71.2",
+    "react-intersection-observer": "^10.0.3",
+    "react-virtuoso": "^4.18.6",
     "tailwind-merge": "^3.5.0",
     "vite": "^6.2.0"
   },

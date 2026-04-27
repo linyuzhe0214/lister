@@ -27,6 +27,10 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  
+  const [limit, setLimit] = useState(500);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
 
   // VITE_GAS_URL will be provided in .env
   const GAS_URL = import.meta.env.VITE_GAS_URL || '';
@@ -36,54 +40,61 @@ export default function App() {
   useEffect(() => {
     const cachedData = localStorage.getItem('reports_cache');
     if (cachedData) {
-      try {
-        setReports(JSON.parse(cachedData));
-        setLoading(false);
-      } catch (e) {
-        console.error('Failed to parse cache');
-      }
+      // Async parse to prevent blocking main thread frame
+      setTimeout(() => {
+        try {
+          setReports(JSON.parse(cachedData));
+          setLoading(false);
+        } catch (e) {
+          console.error('Failed to parse cache');
+        }
+      }, 0);
     }
     console.log("GAS_URL Status:", GAS_URL ? "Configured" : "NOT CONFIGURED! Check .env");
-    fetchReports();
+    fetchReports(500);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchReports = async () => {
+  const fetchReports = async (currentLimit: number, isLoadMore = false) => {
     if (!GAS_URL) {
       setLoading(false);
       return;
     }
     try {
-      // If we already have cached data, don't show full loading spinner
-      if (reports.length === 0) {
-        const cachedData = localStorage.getItem('reports_cache');
-        if (cachedData) {
-          try {
-            setReports(JSON.parse(cachedData));
-            setLoading(false);
-          } catch (e) {}
-        } else {
-          setLoading(true);
-        }
+      if (isLoadMore) {
+        setLoadingMore(true);
+      } else if (reports.length === 0 && !localStorage.getItem('reports_cache')) {
+        setLoading(true);
       }
       
       const timestamp = new Date().getTime();
-      const res = await fetch(`${GAS_URL}?location_type=all&include_photos=false&_t=${timestamp}`);
+      const res = await fetch(`${GAS_URL}?location_type=all&include_photos=false&limit=${currentLimit}&_t=${timestamp}`);
       const data = await res.json();
       const reportData = Array.isArray(data) ? data : [];
       
       setReports(reportData);
-      try {
-        localStorage.setItem('reports_cache', JSON.stringify(reportData));
-      } catch (e) {
-        console.warn('localStorage quota exceeded, clearing cache');
-        localStorage.removeItem('reports_cache');
-      }
-      preloadPhotos(reportData);
+      setHasMore(reportData.length >= currentLimit);
+
+      setTimeout(() => {
+        try {
+          localStorage.setItem('reports_cache', JSON.stringify(reportData));
+        } catch (e) {
+          console.warn('localStorage quota exceeded, clearing cache');
+          localStorage.removeItem('reports_cache');
+        }
+      }, 0);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  };
+
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore) return;
+    const nextLimit = limit + 500;
+    setLimit(nextLimit);
+    fetchReports(nextLimit, true);
   };
 
   const getReportPhoto = async (id: number): Promise<string> => {
@@ -108,53 +119,6 @@ export default function App() {
     }
   };
 
-  // Batch preload photos in background using idle time
-  const preloadPhotos = useCallback((reportData: Report[]) => {
-    if (!GAS_URL) return;
-    const idsToPreload = reportData
-      .filter(r => r.id && !r.photo && !photoCache.current.has(r.id))
-      .map(r => r.id!);
-    if (idsToPreload.length === 0) return;
-
-    // Load in smaller batches to avoid hitting GAS quotas or slowing down UI
-    const BATCH_SIZE = 10;
-    let batchIdx = 0;
-    const loadBatch = () => {
-      const batch = idsToPreload.slice(batchIdx * BATCH_SIZE, (batchIdx + 1) * BATCH_SIZE);
-      if (batch.length === 0) return;
-      fetch(GAS_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'getPhotos', ids: batch }),
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data && !data.error) {
-            Object.entries(data).forEach(([id, photo]) => {
-              if (photo) photoCache.current.set(Number(id), photo as string);
-            });
-          }
-          batchIdx++;
-          if (batchIdx * BATCH_SIZE < idsToPreload.length) {
-            if ('requestIdleCallback' in window) {
-              (window as any).requestIdleCallback(loadBatch);
-            } else {
-              setTimeout(loadBatch, 100);
-            }
-          }
-        })
-        .catch(() => { /* silent */ });
-    };
-
-    // Start first batch after a short delay to let UI settle
-    setTimeout(() => {
-      if ('requestIdleCallback' in window) {
-        (window as any).requestIdleCallback(loadBatch);
-      } else {
-        loadBatch();
-      }
-    }, 500);
-  }, [GAS_URL]);
 
   // Step 1: Filter by location_type (mainline/ramp/all) — instant, no API call
   const typeFilteredReports = useMemo(() => {
@@ -376,7 +340,7 @@ export default function App() {
       await new Promise(resolve => setTimeout(resolve, isEditing ? 5000 : 2000));
       
       // Fetch fresh data, then merge back submitted fields if server returned stale empty values
-      await fetchReports();
+      await fetchReports(limit);
       if (submittedId !== null) {
         setReports(prev => prev.map(r => {
           if (r.id !== submittedId) return r;
@@ -394,7 +358,7 @@ export default function App() {
     } catch (error: any) {
       console.error('Failed to save report:', error);
       alert('儲存失敗：' + (error.message || '請確認網路狀態與 Google Apps Script 是否部署為最新版本'));
-      fetchReports(); // Revert on failure
+      fetchReports(limit); // Revert on failure
     } finally {
       setIsSubmitting(false);
     }
@@ -886,6 +850,9 @@ export default function App() {
             reports={filteredAndSortedReports} 
             filter={filter}
             activeTab={activeTab}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={handleLoadMore}
             onDelete={handleDeleteReport}
             onBulkDelete={handleBulkDelete}
             onEdit={handleEditReport}

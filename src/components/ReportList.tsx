@@ -1,12 +1,17 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
-import { MapPin, Trash2, Pencil, X, Camera, CheckSquare, Square, AlertCircle } from 'lucide-react';
+import { MapPin, Trash2, Pencil, X, Camera, CheckSquare, Square, AlertCircle, Loader2 } from 'lucide-react';
 import { Report } from '../types';
+import { TableVirtuoso, Virtuoso } from 'react-virtuoso';
+import { LazyPhoto } from './LazyPhoto';
 
 interface ReportListProps {
   reports: Report[];
   filter: 'all' | 'mainline' | 'ramp';
   activeTab: 'reports' | 'assignments';
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
   onDelete: (id: number) => void;
   onBulkDelete: (ids: number[]) => void;
   onEdit: (report: Report) => void;
@@ -15,7 +20,7 @@ interface ReportListProps {
   onToggleComplete: (id: number, completed: boolean, date?: string) => void;
 }
 
-export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete, onEdit, onGetPhoto, onAssign, onToggleComplete }: ReportListProps) {
+export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, onLoadMore, onDelete, onBulkDelete, onEdit, onGetPhoto, onAssign, onToggleComplete }: ReportListProps) {
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
@@ -36,19 +41,11 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
   const [assigningReportId, setAssigningReportId] = useState<number | null>(null);
   const [completingReportId, setCompletingReportId] = useState<number | null>(null);
   const [completionDate, setCompletionDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 50;
   
   const [scrollState, setScrollState] = useState({ left: false, right: false });
-  const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Table drag state
-  const isDraggingTable = useRef(false);
-  const tableDragStartOffset = useRef(0);
-  const tableDragScrollLeft = useRef(0);
-
-  const checkScroll = useCallback(() => {
-    const el = tableContainerRef.current;
+  const checkScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const el = e.currentTarget;
     if (!el) return;
     const { scrollLeft, scrollWidth, clientWidth } = el;
     setScrollState({
@@ -57,58 +54,11 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
     });
   }, []);
 
-  useEffect(() => {
-    const el = tableContainerRef.current;
-    if (el) {
-      el.addEventListener('scroll', checkScroll);
-      window.addEventListener('resize', checkScroll);
-      checkScroll();
-    }
-    return () => {
-      el?.removeEventListener('scroll', checkScroll);
-      window.removeEventListener('resize', checkScroll);
-    };
-  }, [checkScroll, reports]);
-
-  const handleTableMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0 || !tableContainerRef.current) return;
-    const target = e.target as HTMLElement;
-    const isInteractive = target.closest('button, input, a, select, option, .sticky-left, .sticky-right');
-    if (isInteractive) return;
-
-    isDraggingTable.current = true;
-    tableContainerRef.current.style.cursor = 'grabbing';
-    tableContainerRef.current.style.userSelect = 'none';
-    tableDragStartOffset.current = e.pageX - tableContainerRef.current.offsetLeft;
-    tableDragScrollLeft.current = tableContainerRef.current.scrollLeft;
-  };
-
-  const handleTableMouseMove = (e: React.MouseEvent) => {
-    if (!isDraggingTable.current || !tableContainerRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - tableContainerRef.current.offsetLeft;
-    const walk = (x - tableDragStartOffset.current) * 1.5;
-    tableContainerRef.current.scrollLeft = tableDragScrollLeft.current - walk;
-  };
-
-  const handleTableMouseUpOrLeave = () => {
-    isDraggingTable.current = false;
-    if (tableContainerRef.current) {
-      tableContainerRef.current.style.cursor = '';
-      tableContainerRef.current.style.userSelect = '';
+  const handleEndReached = () => {
+    if (hasMore && !loadingMore && onLoadMore) {
+      onLoadMore();
     }
   };
-
-  // Reset page when reports change (e.g. filter change)
-  // MUST use useEffect — never setState during render
-  useEffect(() => {
-    setPage(0);
-  }, [reports.length]);
-
-  const totalPages = Math.ceil(reports.length / PAGE_SIZE);
-  const paginatedReports = useMemo(() => 
-    reports.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-  , [reports, page]);
 
   const handlePreviewPhoto = async (report: Report) => {
     // Mark as viewed and persist
@@ -259,17 +209,27 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
       )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
-        <div 
-          ref={tableContainerRef}
-          className="hidden md:block overflow-auto max-h-[calc(100vh-240px)] custom-scrollbar"
-          onMouseDown={handleTableMouseDown}
-          onMouseMove={handleTableMouseMove}
-          onMouseUp={handleTableMouseUpOrLeave}
-          onMouseLeave={handleTableMouseUpOrLeave}
-        >
-          <table className="w-full text-left border-collapse min-w-[1200px]">
-            <thead>
-              <tr className="bg-gray-50 text-sm font-medium text-gray-500">
+        <div className="hidden md:block h-[calc(100vh-240px)] w-full">
+          <TableVirtuoso
+            data={reports}
+            endReached={handleEndReached}
+            onScroll={checkScroll}
+            components={{
+              Table: (props) => <table {...props} className="w-full text-left border-collapse min-w-[1200px]" />,
+              TableHead: React.forwardRef((props, ref) => <thead {...props} ref={ref} className="bg-gray-50 text-sm font-medium text-gray-500 shadow-sm" />),
+              TableRow: ({ item, ...props }: any) => {
+                const report = item as Report;
+                const isSelected = report.id ? selectedIds.includes(report.id) : false;
+                const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
+                let rowBg = 'hover:bg-gray-50/50';
+                if (isSelected) rowBg = 'bg-indigo-50/30';
+                else if (isCompleted) rowBg = 'bg-green-50/50 hover:bg-green-100/50';
+                return <tr {...props} className={`transition-colors text-sm text-gray-800 ${rowBg}`} />;
+              },
+              TableBody: React.forwardRef((props, ref) => <tbody {...props} ref={ref} className="divide-y divide-gray-100" />),
+            }}
+            fixedHeaderContent={() => (
+              <tr>
                 <th className={`p-4 w-10 sticky top-0 left-0 bg-gray-50 z-40 shadow-[0_1px_0_0_#f3f4f6] ${scrollState.left ? 'shadow-left' : ''}`}>
                   <button 
                     onClick={toggleSelectAll}
@@ -282,105 +242,94 @@ export function ReportList({ reports, filter, activeTab, onDelete, onBulkDelete,
                     )}
                   </button>
                 </th>
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">項次</th>
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">登錄時間</th>
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">位置類型</th>
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">國道/方向</th>
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">項次</th>
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">登錄時間</th>
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">位置類型</th>
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">國道/方向</th>
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">
                   {filter === 'mainline' ? '里程' : filter === 'ramp' ? '交流道名稱' : '里程/交流道名稱'}
                 </th>
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">
                   {filter === 'mainline' ? '車道' : filter === 'ramp' ? '出口/入口' : '車道/出入口'}
                 </th>
-                <th className="p-4 min-w-[150px] sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">損壞狀況</th>
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">改善方式</th>
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">監造審查</th>
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">後續處理方式</th>
+                <th className="p-4 min-w-[150px] bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">損壞狀況</th>
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">改善方式</th>
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">監造審查</th>
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">後續處理方式</th>
                 {activeTab === 'assignments' && (
                   <>
-                    <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">派工項目</th>
-                    <th className="p-4 whitespace-nowrap text-center sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">狀態</th>
+                    <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">派工項目</th>
+                    <th className="p-4 whitespace-nowrap text-center bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">狀態</th>
                   </>
                 )}
-                <th className="p-4 whitespace-nowrap sticky top-0 bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">完成時間</th>
+                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">完成時間</th>
                 <th className={`p-4 whitespace-nowrap text-center sticky top-0 right-0 bg-gray-50 z-40 shadow-[0_1px_0_0_#f3f4f6] ${scrollState.right ? 'shadow-right' : ''}`}>操作 / 照片</th>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {paginatedReports.map((report, index) => (
-                <ReportRow 
-                  key={report.id}
-                  report={report}
-                  index={page * PAGE_SIZE + index}
-                  isSelected={selectedIds.includes(report.id!)}
-                  isViewed={report.id ? viewedIds.has(report.id) : false}
-                  activeTab={activeTab}
-                  filter={filter}
-                  scrollState={scrollState}
-                  toggleSelect={toggleSelect}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onAssign={onAssign}
-                  onToggleComplete={onToggleComplete}
-                  onPhotoClick={handlePreviewPhoto}
-                  setAssigningReportId={setAssigningReportId}
-                  setCompletingReportId={setCompletingReportId}
-                  setCompletionDate={setCompletionDate}
-                />
-              ))}
-            </tbody>
-          </table>
+            )}
+            itemContent={(index, report) => (
+              <ReportRow 
+                key={report.id}
+                report={report}
+                index={index}
+                isSelected={selectedIds.includes(report.id!)}
+                isViewed={report.id ? viewedIds.has(report.id) : false}
+                activeTab={activeTab}
+                filter={filter}
+                scrollState={scrollState}
+                toggleSelect={toggleSelect}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onAssign={onAssign}
+                onToggleComplete={onToggleComplete}
+                onPhotoClick={handlePreviewPhoto}
+                onGetPhoto={onGetPhoto}
+                setAssigningReportId={setAssigningReportId}
+                setCompletingReportId={setCompletingReportId}
+                setCompletionDate={setCompletionDate}
+              />
+            )}
+          />
         </div>
 
         {/* Mobile Card View */}
-        <div className="md:hidden divide-y divide-gray-100">
-          {paginatedReports.map((report, index) => (
-            <ReportCard
-              key={report.id}
-              report={report}
-              index={page * PAGE_SIZE + index}
-              isSelected={selectedIds.includes(report.id!)}
-              isViewed={report.id ? viewedIds.has(report.id) : false}
-              activeTab={activeTab}
-              toggleSelect={toggleSelect}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onAssign={onAssign}
-              onToggleComplete={onToggleComplete}
-              onPhotoClick={handlePreviewPhoto}
-              setAssigningReportId={setAssigningReportId}
-              setCompletingReportId={setCompletingReportId}
-              setCompletionDate={setCompletionDate}
-            />
-          ))}
+        <div className="md:hidden h-[calc(100vh-220px)] w-full">
+          <Virtuoso
+            data={reports}
+            endReached={handleEndReached}
+            itemContent={(index, report) => (
+              <ReportCard
+                key={report.id}
+                report={report}
+                index={index}
+                isSelected={selectedIds.includes(report.id!)}
+                isViewed={report.id ? viewedIds.has(report.id) : false}
+                activeTab={activeTab}
+                toggleSelect={toggleSelect}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onAssign={onAssign}
+                onToggleComplete={onToggleComplete}
+                onPhotoClick={handlePreviewPhoto}
+                onGetPhoto={onGetPhoto}
+                setAssigningReportId={setAssigningReportId}
+                setCompletingReportId={setCompletingReportId}
+                setCompletionDate={setCompletionDate}
+              />
+            )}
+          />
         </div>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-4">
-          <span className="text-sm text-gray-500">
-            顯示 {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, reports.length)}，共 {reports.length} 筆
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-            >
-              上一頁
-            </button>
-            <span className="text-sm text-gray-600 font-medium px-3">
-              {page + 1} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-            >
-              下一頁
-            </button>
-          </div>
+      {hasMore && (
+        <div className="flex justify-center mt-4">
+          <button 
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50"
+          >
+            {loadingMore ? <Loader2 size={18} className="animate-spin" /> : null}
+            {loadingMore ? '載入中...' : '載入更多歷史紀錄'}
+          </button>
         </div>
       )}
 
@@ -577,6 +526,7 @@ const ReportRow = React.memo(({
   onAssign, 
   onToggleComplete, 
   onPhotoClick,
+  onGetPhoto,
   setAssigningReportId,
   setCompletingReportId,
   setCompletionDate
@@ -594,17 +544,14 @@ const ReportRow = React.memo(({
   onAssign: (id: number, type: string) => void;
   onToggleComplete: (id: number, completed: boolean, date?: string) => void;
   onPhotoClick: (report: Report) => void;
+  onGetPhoto: (id: number) => Promise<string>;
   setAssigningReportId: (id: number) => void;
   setCompletingReportId: (id: number) => void;
   setCompletionDate: (date: string) => void;
 }) => {
   const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
-  let rowBg = 'hover:bg-gray-50/50';
-  if (isSelected) rowBg = 'bg-indigo-50/30';
-  else if (isCompleted) rowBg = 'bg-green-50/50 hover:bg-green-100/50';
-
   return (
-    <tr className={`transition-colors text-sm text-gray-800 ${rowBg}`}>
+    <>
       <td className={`p-4 sticky-left z-20 ${isSelected ? 'bg-indigo-50/30' : (isCompleted ? 'bg-green-50/50' : 'bg-white')} ${scrollState.left ? 'shadow-left' : ''}`}>
         <button 
           onClick={() => report.id && toggleSelect(report.id)}
@@ -678,29 +625,16 @@ const ReportRow = React.memo(({
       <td className="p-4 whitespace-nowrap">{report.completion_time ? (() => { try { return format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm'); } catch { return String(report.completion_time); } })() : '-'}</td>
       <td className={`p-4 text-center sticky-right z-20 ${isSelected ? 'bg-indigo-50/30' : (isCompleted ? 'bg-green-50/50' : 'bg-white')} ${scrollState.right ? 'shadow-right' : ''}`}>
         <div className="flex items-center justify-center gap-1.5 sm:gap-2">
-          {/* Photo Preview Button */}
-          <div 
-            className="w-9 h-9 rounded-lg overflow-hidden border cursor-pointer transition-all flex items-center justify-center flex-shrink-0 relative group"
-            style={isViewed
-              ? { borderColor: '#86efac', filter: 'grayscale(0.55) brightness(0.9)' }
-              : { borderColor: '#e5e7eb' }}
+          {/* Photo Preview Button with LazyPhoto */}
+          <LazyPhoto
+            id={report.id}
+            initialPhoto={report.photo}
+            isViewed={isViewed}
+            onGetPhoto={onGetPhoto}
             onClick={() => onPhotoClick(report)}
-            title={isViewed ? '已看過' : '查看照片'}
-          >
-            {report.photo ? (
-              <img src={report.photo} alt="縮圖" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-            ) : (
-              <Camera size={18} className="text-gray-400" />
-            )}
-            {/* Two-state badge: viewed = green check, unviewed = nothing */}
-            {isViewed && (
-              <span className="absolute bottom-0.5 right-0.5 flex items-center justify-center w-3.5 h-3.5 bg-green-500 rounded-full shadow">
-                <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="1.5 5 4 7.5 8.5 2.5" />
-                </svg>
-              </span>
-            )}
-          </div>
+            className="w-9 h-9 rounded-lg border flex-shrink-0"
+            badgeClassName="bottom-0.5 right-0.5 w-3.5 h-3.5"
+          />
 
           <div className="w-px h-6 bg-gray-100 mx-0.5 hidden xs:block" />
 
@@ -739,7 +673,7 @@ const ReportRow = React.memo(({
           )}
         </div>
       </td>
-    </tr>
+    </>
   );
 });
 
@@ -757,6 +691,7 @@ const ReportCard = React.memo(({
   onAssign, 
   onToggleComplete, 
   onPhotoClick,
+  onGetPhoto,
   setAssigningReportId,
   setCompletingReportId,
   setCompletionDate
@@ -772,6 +707,7 @@ const ReportCard = React.memo(({
   onAssign: (id: number, type: string) => void;
   onToggleComplete: (id: number, completed: boolean, date?: string) => void;
   onPhotoClick: (report: Report) => void;
+  onGetPhoto: (id: number) => Promise<string>;
   setAssigningReportId: (id: number) => void;
   setCompletingReportId: (id: number) => void;
   setCompletionDate: (date: string) => void;
@@ -782,26 +718,15 @@ const ReportCard = React.memo(({
     <div className={`p-4 transition-all ${isSelected ? 'bg-indigo-50/50' : (isCompleted ? 'bg-green-50/30' : 'bg-white')} border-b border-gray-50 active:bg-gray-50`}>
       <div className="flex items-start gap-4">
         {/* Photo Thumbnail */}
-        <div 
-          className="w-24 h-24 rounded-2xl overflow-hidden border-2 relative shrink-0 shadow-sm"
-          style={isViewed ? { borderColor: '#86efac' } : { borderColor: '#f1f5f9' }}
+        <LazyPhoto
+          id={report.id}
+          initialPhoto={report.photo}
+          isViewed={isViewed}
+          onGetPhoto={onGetPhoto}
           onClick={() => onPhotoClick(report)}
-        >
-          {report.photo ? (
-            <img src={report.photo} alt="縮圖" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-50 text-gray-300">
-              <Camera size={24} />
-            </div>
-          )}
-          {isViewed && (
-            <span className="absolute bottom-1 right-1 flex items-center justify-center w-5 h-5 bg-green-500 rounded-full shadow-sm border border-white">
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="1.5 5 4 7.5 8.5 2.5" />
-              </svg>
-            </span>
-          )}
-        </div>
+          className="w-24 h-24 rounded-2xl border-2 shrink-0 shadow-sm"
+          badgeClassName="bottom-1 right-1 w-5 h-5"
+        />
 
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start mb-1">

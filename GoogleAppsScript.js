@@ -64,8 +64,16 @@ function doGet(e) {
 
   if (lastRow <= 1) return responseJson([]);
 
-  const data = sheet.getRange(1, 1, lastRow, lastCol).getValues();
-  const headers = data.shift();
+  // Pagination support
+  const limitStr = e.parameter.limit;
+  const limit = limitStr ? parseInt(limitStr, 10) : 500;
+  
+  // Calculate start row (fetching from bottom to get newest)
+  const startRow = Math.max(2, lastRow - limit + 1);
+  const numRows = lastRow - startRow + 1;
+
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const data = sheet.getRange(startRow, 1, numRows, lastCol).getValues();
   const includePhotos = e.parameter.include_photos === 'true';
 
   let reports = data.map(row => {
