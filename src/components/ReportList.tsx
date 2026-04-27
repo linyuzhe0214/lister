@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { MapPin, Trash2, Pencil, X, Camera, CheckSquare, Square, AlertCircle, Loader2 } from 'lucide-react';
 import { Report } from '../types';
