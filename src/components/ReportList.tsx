@@ -179,6 +179,9 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
 
   const headerScrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollLeftStart = useRef(0);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -186,6 +189,31 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
       headerScrollRef.current.scrollLeft = target.scrollLeft;
     } else if (target === headerScrollRef.current && scrollContainerRef.current) {
       scrollContainerRef.current.scrollLeft = target.scrollLeft;
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollContainerRef.current) return;
+    isDragging.current = true;
+    startX.current = e.pageX - scrollContainerRef.current.offsetLeft;
+    scrollLeftStart.current = scrollContainerRef.current.scrollLeft;
+    scrollContainerRef.current.style.cursor = 'grabbing';
+    scrollContainerRef.current.style.userSelect = 'none';
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging.current || !scrollContainerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollContainerRef.current.offsetLeft;
+    const walk = (x - startX.current) * 1.5; // Scroll speed
+    scrollContainerRef.current.scrollLeft = scrollLeftStart.current - walk;
+  };
+
+  const stopDragging = () => {
+    isDragging.current = false;
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.style.cursor = 'grab';
+      scrollContainerRef.current.style.removeProperty('user-select');
     }
   };
 
@@ -221,19 +249,24 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
       )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
-        {/* Top Scrollbar (Visible on PC) */}
+        {/* Top Scrollbar (Visible on both PC and Mobile) */}
         <div 
           ref={headerScrollRef}
           onScroll={handleScroll}
-          className="hidden md:block overflow-x-auto border-b border-gray-50 bg-gray-50/50 customize-scrollbar no-scrollbar"
+          className="overflow-x-auto border-b border-gray-50 bg-gray-50/50 customize-scrollbar"
         >
-          <div className="min-w-[1200px] h-1.5"></div>
+          <div className="min-w-[1200px] h-3 sm:h-1.5"></div>
         </div>
 
         <div 
           ref={scrollContainerRef}
           onScroll={handleScroll}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={stopDragging}
+          onMouseLeave={stopDragging}
           className="hidden md:block h-[calc(100vh-240px)] w-full overflow-auto customize-scrollbar"
+          style={{ cursor: 'grab' }}
         >
           <TableVirtuoso
             data={reports}
