@@ -687,14 +687,15 @@ export default function App() {
         </div>
 
         {/* Filters Section */}
-        <div className={`${showMobileFilters ? 'flex' : 'hidden lg:flex'} flex-col gap-6 mb-8 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 animate-slide-up sticky top-[106px] sm:top-[124px] z-30`}>
-          <div className="flex flex-col lg:flex-row lg:items-center gap-5">
-            <div className="flex items-center gap-2 text-gray-500 font-bold hidden lg:flex">
-              <Filter size={20} />
-              <span>篩選條件</span>
+        <div className={`${showMobileFilters ? 'flex' : 'hidden lg:flex'} flex-col gap-3 mb-8 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 animate-slide-up sticky top-[106px] sm:top-[124px] z-30`}>
+          {/* Row 1: Type buttons + Dropdowns + Sort */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+            <div className="flex items-center gap-2 text-gray-500 font-bold hidden lg:flex shrink-0">
+              <Filter size={18} />
+              <span className="text-sm">篩選</span>
             </div>
-            
-            <div className="grid grid-cols-3 sm:flex gap-2 lg:border-r lg:border-gray-100 lg:pr-5">
+
+            <div className="flex gap-2 shrink-0">
               <button 
                 onClick={() => setFilter('all')}
                 className={`px-4 py-2 rounded-xl text-sm font-bold transition-all
@@ -718,7 +719,9 @@ export default function App() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex items-center gap-3 flex-1">
+            <div className="h-px lg:h-6 lg:w-px bg-gray-100 shrink-0" />
+
+            <div className="flex flex-wrap lg:flex-nowrap items-center gap-3 flex-1">
               <SearchableDropdown
                 options={uniqueHighways}
                 value={filterHighway}
@@ -744,88 +747,10 @@ export default function App() {
                   allLabel="所有派工項目"
                 />
               )}
-              
-              <div className="hidden lg:block h-8 w-px bg-gray-100 mx-1"></div>
-              
-              <div className="flex items-center gap-2 sm:col-span-2 lg:col-auto overflow-hidden">
-                <div className="flex-1 relative group">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={e => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
-                    title="開始日期"
-                  />
-                  {startDate && (
-                    <button 
-                      onClick={() => setStartDate('')}
-                      className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-                <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
-                <div className="flex-1 relative group">
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={e => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
-                    title="結束日期"
-                  />
-                  {endDate && (
-                    <button 
-                      onClick={() => setEndDate('')}
-                      className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 sm:col-span-2 lg:col-auto">
-                <div className="flex-1 relative group">
-                  <input
-                    type="text"
-                    placeholder="起始里程 (如 181k)"
-                    value={mileageStart}
-                    onChange={e => setMileageStart(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
-                  />
-                  {mileageStart && (
-                    <button 
-                      onClick={() => setMileageStart('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-                <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
-                <div className="flex-1 relative group">
-                  <input
-                    type="text"
-                    placeholder="結束里程 (如 183k)"
-                    value={mileageEnd}
-                    onChange={e => setMileageEnd(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
-                  />
-                  {mileageEnd && (
-                    <button 
-                      onClick={() => setMileageEnd('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
             </div>
 
-            <div className="hidden lg:flex items-center gap-2 border-l border-gray-100 pl-5">
-              <ArrowUpDown size={16} className="text-gray-400" />
+            <div className="hidden lg:flex items-center gap-2 border-l border-gray-100 pl-4 shrink-0">
+              <ArrowUpDown size={15} className="text-gray-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
@@ -836,6 +761,89 @@ export default function App() {
                 <option value="mileageAsc">里程 (小到大)</option>
                 <option value="mileageDesc">里程 (大到小)</option>
               </select>
+            </div>
+          </div>
+
+          {/* Row 2: Date range + Mileage range */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t border-gray-50">
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-xs font-bold text-gray-400 shrink-0 w-14">登錄日期</span>
+              <div className="flex-1 relative">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                  title="開始日期"
+                />
+                {startDate && (
+                  <button 
+                    onClick={() => setStartDate('')}
+                    className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+              <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
+              <div className="flex-1 relative">
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                  title="結束日期"
+                />
+                {endDate && (
+                  <button 
+                    onClick={() => setEndDate('')}
+                    className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="hidden sm:block w-px bg-gray-100 shrink-0" />
+
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-xs font-bold text-gray-400 shrink-0 w-14">里程範圍</span>
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  placeholder="起始里程 (如 181k)"
+                  value={mileageStart}
+                  onChange={e => setMileageStart(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                />
+                {mileageStart && (
+                  <button 
+                    onClick={() => setMileageStart('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+              <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  placeholder="結束里程 (如 183k)"
+                  value={mileageEnd}
+                  onChange={e => setMileageEnd(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                />
+                {mileageEnd && (
+                  <button 
+                    onClick={() => setMileageEnd('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
