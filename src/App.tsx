@@ -702,7 +702,7 @@ export default function App() {
                 title="匯出 Excel 報表"
               >
                 {isExporting ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-200 border-t-indigo-600"></div> : <Download size={20} />}
-                <span className="hidden md:inline font-bold">Excel</span>
+                <span className="hidden md:inline font-bold">匯出 Excel</span>
               </button>
               <button 
                 onClick={exportToHTML}
@@ -711,7 +711,7 @@ export default function App() {
                 title="匯出含照片報表 (PDF/HTML)"
               >
                 {isExporting ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-200 border-t-indigo-600"></div> : <Download size={20} />}
-                <span className="hidden md:inline font-bold">{isExporting ? '載入中' : '匯出'}</span>
+                <span className="hidden md:inline font-bold">{isExporting ? '載入中' : '匯出 PDF'}</span>
               </button>
               <button 
                 onClick={() => {
