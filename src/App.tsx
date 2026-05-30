@@ -493,10 +493,12 @@ export default function App() {
         <th>項次</th>
         <th>登錄時間</th>
         <th>位置</th>
+        <th>座標</th>
         <th>里程/車道</th>
         <th>損壞狀況</th>
         <th>改善方式</th>
         <th>後續處理方式</th>
+        <th>完成時間</th>
         ${activeTab === 'assignments' ? '<th>派工項目</th><th>完成狀態</th>' : ''}
         <th class="photo-cell">現場照片</th>
       </tr>
@@ -507,10 +509,12 @@ export default function App() {
           <td>${index + 1}</td>
           <td>${format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
           <td>${report.location_type === 'mainline' ? '主線' : '匝道'}<br>${report.highway} ${report.direction}</td>
+          <td>${report.coordinates || '-'}</td>
           <td>${report.mileage}<br>${report.lane}</td>
           <td>${report.damage_condition}</td>
           <td>${report.improvement_method}</td>
           <td>${report.follow_up_method || '-'}</td>
+          <td>${report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
           ${activeTab === 'assignments' ? `
             <td>${report.assign_type || '-'}</td>
             <td>${report.is_assigned_completed ? '已完成' : '未完成'}</td>
@@ -545,7 +549,7 @@ export default function App() {
     }
 
     const baseHeaders = [
-      '項次', '登錄時間', '位置類型', '國道', '方向', '里程/交流道名稱', 
+      '項次', '登錄時間', '位置類型', '國道', '方向', '座標', '里程/交流道名稱', 
       '車道/出入口', '損壞狀況', '改善方式', '監造審查', '後續處理方式', '完成時間'
     ];
     
@@ -562,6 +566,7 @@ export default function App() {
           report.location_type === 'mainline' ? '主線' : '匝道',
           report.highway,
           report.direction,
+          report.coordinates || '',
           report.mileage,
           report.lane,
           report.damage_condition,
@@ -622,10 +627,18 @@ export default function App() {
 
             <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
               <button 
+                onClick={exportToCSV}
+                className="p-2 sm:px-4 sm:py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl shadow-sm transition-all active:scale-95 flex items-center gap-2"
+                title="匯出 CSV 報表"
+              >
+                <Download size={20} />
+                <span className="hidden md:inline font-bold">CSV</span>
+              </button>
+              <button 
                 onClick={exportToHTML}
                 disabled={isExporting}
                 className="p-2 sm:px-4 sm:py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl shadow-sm transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
-                title="匯出含照片報表"
+                title="匯出含照片報表 (PDF/HTML)"
               >
                 {isExporting ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-200 border-t-indigo-600"></div> : <Download size={20} />}
                 <span className="hidden md:inline font-bold">{isExporting ? '載入中' : '匯出'}</span>
