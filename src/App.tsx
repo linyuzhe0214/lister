@@ -5,6 +5,8 @@ import { Report } from './types';
 import { ReportForm } from './components/ReportForm';
 import { ReportList } from './components/ReportList';
 import { SearchableDropdown } from './components/SearchableDropdown';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 export default function App() {
   const [reports, setReports] = useState<Report[]>([]);
@@ -542,59 +544,126 @@ export default function App() {
     }
   };
 
-  const exportToCSV = () => {
+  const exportToExcel = async () => {
     if (filteredAndSortedReports.length === 0) {
       alert('沒有資料可供匯出');
       return;
     }
 
-    const baseHeaders = [
-      '項次', '登錄時間', '位置類型', '國道', '方向', '座標', '里程/交流道名稱', 
-      '車道/出入口', '損壞狀況', '改善方式', '監造審查', '後續處理方式', '完成時間'
-    ];
-    
-    const headers = activeTab === 'assignments' 
-      ? [...baseHeaders, '派工項目', '完成狀態'] 
-      : baseHeaders;
+    setIsExporting(true);
+    try {
+      const missingPhotoIds = filteredAndSortedReports.filter(r => !r.photo && r.id).map(r => r.id!);
+      let photoMap: Record<string, string> = {};
 
-    const csvRows = [
-      headers.join(','),
-      ...filteredAndSortedReports.map((report, index) => {
-        const row = [
+      if (missingPhotoIds.length > 0 && GAS_URL) {
+        try {
+          const res = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'getPhotos', ids: missingPhotoIds }),
+          });
+          const data = await res.json();
+          if (data && !data.error) {
+            photoMap = data;
+          }
+        } catch (e) {
+          console.error('Failed to pre-fetch photos for export', e);
+        }
+      }
+
+      const exportData = filteredAndSortedReports.map(report => ({
+        ...report,
+        photo: report.photo || (report.id ? photoMap[String(report.id)] : '') || ''
+      }));
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('巡查紀錄');
+
+      const baseHeaders = [
+        '項次', '登錄時間', '位置類型', '國道', '方向', '座標', '里程/交流道名稱', 
+        '車道/出入口', '損壞狀況', '改善方式', '監造審查', '後續處理方式', '完成時間'
+      ];
+      
+      const hasAssignments = activeTab === 'assignments';
+      const headers = hasAssignments 
+        ? [...baseHeaders, '派工項目', '完成狀態', '現場照片'] 
+        : [...baseHeaders, '現場照片'];
+
+      // Add headers
+      worksheet.addRow(headers);
+      worksheet.getRow(1).font = { bold: true };
+      
+      // Setup column widths
+      worksheet.columns = headers.map((h) => {
+        if (h === '現場照片') return { width: 30 };
+        if (h === '登錄時間' || h === '完成時間') return { width: 20 };
+        if (h === '座標' || h === '里程/交流道名稱') return { width: 20 };
+        if (h === '改善方式' || h === '損壞狀況' || h === '後續處理方式') return { width: 25 };
+        return { width: 15 };
+      });
+
+      // Add data rows
+      exportData.forEach((report, index) => {
+        const rowData = [
           index + 1,
           format(new Date(report.log_time), 'yyyy/MM/dd HH:mm'),
           report.location_type === 'mainline' ? '主線' : '匝道',
-          report.highway,
-          report.direction,
+          report.highway || '',
+          report.direction || '',
           report.coordinates || '',
-          report.mileage,
-          report.lane,
-          report.damage_condition,
+          report.mileage || '',
+          report.lane || '',
+          report.damage_condition || '',
           report.improvement_method || '',
           report.supervision_review || '',
           report.follow_up_method || '',
           report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : ''
         ];
-        
-        if (activeTab === 'assignments') {
-          row.push(report.assign_type || '');
-          row.push(report.is_assigned_completed ? '已完成' : '未完成');
-        }
-        
-        // Escape quotes and wrap in quotes to handle commas in data
-        return row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',');
-      })
-    ];
 
-    const csvContent = '\uFEFF' + csvRows.join('\n'); // Add BOM for Excel UTF-8 compatibility
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `巡查紀錄匯出_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        if (hasAssignments) {
+          rowData.push(report.assign_type || '');
+          rowData.push(report.is_assigned_completed ? '已完成' : '未完成');
+        }
+
+        const row = worksheet.addRow(rowData);
+        row.height = 100;
+        
+        // Add image if exists
+        if (report.photo && report.photo.startsWith('data:image')) {
+          try {
+            const imgColIdx = headers.indexOf('現場照片');
+            const imageId = workbook.addImage({
+              base64: report.photo,
+              extension: report.photo.includes('png') ? 'png' : 'jpeg',
+            });
+            worksheet.addImage(imageId, {
+              tl: { col: imgColIdx, row: row.number - 1 },
+              ext: { width: 120, height: 90 },
+              editAs: 'oneCell'
+            });
+          } catch (e) {
+            console.error('Failed to add image to excel', e);
+          }
+        }
+      });
+      
+      // Vertical align all cells to middle
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        });
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const title = `巡查紀錄匯出_${format(new Date(), 'yyyyMMdd_HHmm')}`;
+      saveAs(new Blob([buffer]), `${title}.xlsx`);
+      
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('匯出 Excel 發生錯誤');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -627,12 +696,13 @@ export default function App() {
 
             <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
               <button 
-                onClick={exportToCSV}
-                className="p-2 sm:px-4 sm:py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl shadow-sm transition-all active:scale-95 flex items-center gap-2"
-                title="匯出 CSV 報表"
+                onClick={exportToExcel}
+                disabled={isExporting}
+                className="p-2 sm:px-4 sm:py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl shadow-sm transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
+                title="匯出 Excel 報表"
               >
-                <Download size={20} />
-                <span className="hidden md:inline font-bold">CSV</span>
+                {isExporting ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-200 border-t-indigo-600"></div> : <Download size={20} />}
+                <span className="hidden md:inline font-bold">Excel</span>
               </button>
               <button 
                 onClick={exportToHTML}
