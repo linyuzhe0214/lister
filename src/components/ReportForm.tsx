@@ -88,10 +88,19 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
     // 用 exifr 解析 GPS（支援 JPEG / HEIC / PNG）
     try {
       const gps = await exifr.gps(file);
-      if (gps && !getValues('coordinates')) {
-        setValue('coordinates', `${gps.latitude.toFixed(6)}, ${gps.longitude.toFixed(6)}`, { shouldDirty: true });
+      console.log('[EXIF GPS]', gps);
+      if (gps?.latitude && gps?.longitude) {
+        const coords = `${gps.latitude.toFixed(6)}, ${gps.longitude.toFixed(6)}`;
+        if (!getValues('coordinates')) {
+          setValue('coordinates', coords, { shouldDirty: true });
+          console.log('[EXIF GPS] 自動帶入座標:', coords);
+        }
+      } else {
+        console.log('[EXIF GPS] 照片無 GPS 資訊');
       }
-    } catch { /* 無 EXIF 或格式不支援，忽略 */ }
+    } catch (err) {
+      console.warn('[EXIF GPS] 解析失敗:', err);
+    }
 
     // 讀 DataURL 做圖片壓縮
     const reader = new FileReader();
