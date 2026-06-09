@@ -831,10 +831,23 @@ const ReportCard = React.memo(({
           <h4 className="font-bold text-gray-900 truncate mb-0.5">
             {report.highway} {report.direction}
           </h4>
-          <p className="text-sm text-gray-600 font-medium flex items-center gap-1.5">
-            <MapPin size={14} className="text-indigo-500" />
-            {report.mileage} · {report.lane}
-          </p>
+          <div className="text-sm text-gray-600 font-medium flex items-center gap-1.5 mt-0.5">
+            {report.coordinates ? (
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(`https://www.google.com/maps?q=${report.coordinates}`, '_blank');
+                }}
+                className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 bg-indigo-50 hover:bg-indigo-100 rounded-md -ml-1 shrink-0"
+                title="查看地圖位置"
+              >
+                <MapPin size={14} />
+              </button>
+            ) : (
+              <MapPin size={14} className="text-indigo-500 shrink-0" />
+            )}
+            <span className="truncate">{report.mileage} · {report.lane}</span>
+          </div>
           
           <div className="mt-3 flex flex-wrap gap-1.5">
             <div className="px-2.5 py-1 bg-gray-100 rounded-lg text-[11px] font-bold text-gray-700">
