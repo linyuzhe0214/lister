@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { Camera, Upload, X, Trash2, MapPin } from 'lucide-react';
+import { Camera, X, Trash2, MapPin, Crosshair, Loader2 } from 'lucide-react';
+import exifr from 'exifr';
 import { format } from 'date-fns';
 import { Report } from '../types';
+
 
 interface ReportFormProps {
   initialData?: Report;
@@ -36,6 +38,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.photo || null);
   const [isPhotoLoading, setIsPhotoLoading] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationType = watch('location_type');
   const highway = watch('highway');
@@ -78,55 +81,84 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
     fetchPhoto();
   }, [initialData, onGetPhoto, setValue]);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const img = new Image();
-        img.onload = () => {
-          // 加強壓縮圖片以符合 GAS 單格 50000 字元限制
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          // 縮小最大尺寸
-          const MAX_WIDTH = 600;
-          const MAX_HEIGHT = 600;
+    if (!file) return;
 
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
+    // 用 exifr 解析 GPS（支援 JPEG / HEIC / PNG）
+    try {
+      const gps = await exifr.gps(file);
+      if (gps && !getValues('coordinates')) {
+        setValue('coordinates', `${gps.latitude.toFixed(6)}, ${gps.longitude.toFixed(6)}`, { shouldDirty: true });
+      }
+    } catch { /* 無 EXIF 或格式不支援，忽略 */ }
 
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // 初始品質設為 0.5
-          let quality = 0.5;
-          let base64String = canvas.toDataURL('image/jpeg', quality);
-          
-          // 如果還是超過 45000 字元 (保留安全邊際)，繼續降低品質
-          while (base64String.length > 45000 && quality > 0.1) {
-            quality -= 0.1;
-            base64String = canvas.toDataURL('image/jpeg', quality);
+    // 讀 DataURL 做圖片壓縮
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const img = new Image();
+      img.onload = () => {
+        // 加強壓縮圖片以符合 GAS 單格 50000 字元限制
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        // 縮小最大尺寸
+        const MAX_WIDTH = 600;
+        const MAX_HEIGHT = 600;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
           }
-          
-          setPhotoPreview(base64String);
-          setValue('photo', base64String);
-        };
-        img.src = reader.result as string;
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        // 初始品質設為 0.5
+        let quality = 0.5;
+        let base64String = canvas.toDataURL('image/jpeg', quality);
+
+        // 如果還是超過 45000 字元 (保留安全邊際)，繼續降低品質
+        while (base64String.length > 45000 && quality > 0.1) {
+          quality -= 0.1;
+          base64String = canvas.toDataURL('image/jpeg', quality);
+        }
+
+        setPhotoPreview(base64String);
+        setValue('photo', base64String);
       };
-      reader.readAsDataURL(file);
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGetCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('您的瀏覽器不支援定位功能');
+      return;
     }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+        setValue('coordinates', coords, { shouldDirty: true });
+        setIsLocating(false);
+      },
+      (err) => {
+        alert(`定位失敗: ${err.message}`);
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const handleRemovePhoto = (e: React.MouseEvent) => {
@@ -457,15 +489,25 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                     </button>
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={handleGetCurrentLocation}
+                  disabled={isLocating}
+                  title="取得手機目前位置"
+                  className="px-4 py-3 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl font-bold hover:bg-emerald-100 transition-all flex items-center gap-2 whitespace-nowrap active:scale-95 disabled:opacity-60"
+                >
+                  {isLocating ? <Loader2 size={18} className="animate-spin" /> : <Crosshair size={18} />}
+                  {isLocating ? '定位中...' : '定位'}
+                </button>
                 <button 
                   type="button"
                   onClick={() => setShowMapPicker(true)}
                   className="px-4 py-3 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl font-bold hover:bg-indigo-100 transition-all flex items-center gap-2 whitespace-nowrap active:scale-95"
                 >
-                  <MapPin size={18} /> 標記位置
+                  <MapPin size={18} /> 標記
                 </button>
               </div>
-              <p className="text-xs text-gray-400 ml-1">選填，提供精確的地圖標記位罝</p>
+              <p className="text-xs text-gray-400 ml-1">選填｜上傳含定位的照片可自動帶入，或點「定位」取得目前位置</p>
             </div>
 
             <div className={`space-y-2 ${isAssignmentEditMode ? 'opacity-60 pointer-events-none' : ''}`}>
