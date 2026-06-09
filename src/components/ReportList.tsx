@@ -832,7 +832,7 @@ const ReportCard = React.memo(({
             {report.highway} {report.direction}
           </h4>
           <div className="text-sm text-gray-600 font-medium flex items-center gap-1.5 mt-0.5">
-            {report.coordinates ? (
+            {report.coordinates && (
               <button 
                 onClick={(e) => {
                   e.stopPropagation();
@@ -843,8 +843,6 @@ const ReportCard = React.memo(({
               >
                 <MapPin size={14} />
               </button>
-            ) : (
-              <MapPin size={14} className="text-indigo-500 shrink-0" />
             )}
             <span className="truncate">{report.mileage} · {report.lane}</span>
           </div>
