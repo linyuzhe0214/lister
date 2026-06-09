@@ -82,7 +82,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
     fetchPhoto();
   }, [initialData, onGetPhoto, setValue]);
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, isCamera: boolean = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -95,13 +95,33 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
           setValue('coordinates', coords, { shouldDirty: true });
         }
         setGpsToast({ msg: `📍 已從照片自動帶入座標`, ok: true });
+        setTimeout(() => setGpsToast(null), 3500);
       } else {
-        setGpsToast({ msg: '照片無 GPS 資訊，請手動定位', ok: false });
+        throw new Error("No EXIF");
       }
     } catch {
-      setGpsToast({ msg: '照片無 GPS 資訊，請手動定位', ok: false });
+      if (isCamera && navigator.geolocation) {
+        setGpsToast({ msg: '正在擷取當下位置...', ok: true });
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const coords = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+            if (!getValues('coordinates')) {
+              setValue('coordinates', coords, { shouldDirty: true });
+            }
+            setGpsToast({ msg: '📍 已自動擷取當下位置', ok: true });
+            setTimeout(() => setGpsToast(null), 3500);
+          },
+          (err) => {
+            setGpsToast({ msg: '照片無 GPS 資訊，且自動定位失敗', ok: false });
+            setTimeout(() => setGpsToast(null), 3500);
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      } else {
+        setGpsToast({ msg: '照片無 GPS 資訊，請手動定位', ok: false });
+        setTimeout(() => setGpsToast(null), 3500);
+      }
     }
-    setTimeout(() => setGpsToast(null), 3500);
 
     // 讀 DataURL 做圖片壓縮
     const reader = new FileReader();
@@ -325,11 +345,11 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                       <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl gap-3">
                         <label className="cursor-pointer text-white font-bold flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 px-6 py-2.5 rounded-xl backdrop-blur-md transition-all active:scale-95 w-48">
                           <Camera size={20} /> 重新拍照
-                          <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} className="hidden" onClick={(e) => { e.currentTarget.value = ''; }} />
+                          <input type="file" accept="image/*" capture="environment" onChange={(e) => handlePhotoUpload(e, true)} className="hidden" onClick={(e) => { e.currentTarget.value = ''; }} />
                         </label>
                         <label className="cursor-pointer text-white font-bold flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 px-6 py-2.5 rounded-xl backdrop-blur-md transition-all active:scale-95 w-48">
                           <ImageIcon size={20} /> 從相簿選擇
-                          <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" onClick={(e) => { e.currentTarget.value = ''; }} />
+                          <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, false)} className="hidden" onClick={(e) => { e.currentTarget.value = ''; }} />
                         </label>
                       </div>
                       <button
@@ -350,12 +370,12 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                     <label className="cursor-pointer flex flex-col items-center justify-center p-5 bg-white rounded-3xl shadow-lg shadow-indigo-100/40 border border-indigo-50 hover:scale-105 active:scale-95 transition-all text-indigo-600 w-28 h-28">
                       <Camera size={36} className="mb-2" />
                       <span className="font-bold text-gray-800">拍照</span>
-                      <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} className="hidden" disabled={isAssignmentEditMode} onClick={(e) => { e.currentTarget.value = ''; }} />
+                      <input type="file" accept="image/*" capture="environment" onChange={(e) => handlePhotoUpload(e, true)} className="hidden" disabled={isAssignmentEditMode} onClick={(e) => { e.currentTarget.value = ''; }} />
                     </label>
                     <label className="cursor-pointer flex flex-col items-center justify-center p-5 bg-white rounded-3xl shadow-lg shadow-indigo-100/40 border border-indigo-50 hover:scale-105 active:scale-95 transition-all text-indigo-600 w-28 h-28">
                       <ImageIcon size={36} className="mb-2" />
                       <span className="font-bold text-gray-800">相簿</span>
-                      <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" disabled={isAssignmentEditMode} onClick={(e) => { e.currentTarget.value = ''; }} />
+                      <input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e, false)} className="hidden" disabled={isAssignmentEditMode} onClick={(e) => { e.currentTarget.value = ''; }} />
                     </label>
                   </div>
                   <p className="text-sm text-gray-400 font-medium">支援 JPG, PNG 格式</p>
