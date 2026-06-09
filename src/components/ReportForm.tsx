@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { Camera, X, Trash2, MapPin, Crosshair, Loader2 } from 'lucide-react';
+import { Camera, X, Trash2, MapPin, Crosshair, Loader2, Image as ImageIcon } from 'lucide-react';
 import exifr from 'exifr';
 import { format } from 'date-fns';
 import { Report } from '../types';
@@ -175,9 +175,6 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
     e.stopPropagation();
     setPhotoPreview(null);
     setValue('photo', '');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   const submitForm = (data: Report) => {
@@ -309,10 +306,9 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
           {/* Photo Upload Section */}
           <div className="space-y-3">
             <label className="block text-sm font-semibold text-gray-700 ml-1">現場照片 <span className="text-red-500">*</span></label>
-            <label 
-              htmlFor="photo-upload"
-              className={`block border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all active:scale-[0.98] relative
-                ${photoPreview ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 hover:border-indigo-400 bg-gray-50/50 hover:bg-white'}`}
+            <div 
+              className={`block border-2 border-dashed rounded-2xl p-6 text-center transition-all relative
+                ${photoPreview ? 'border-indigo-500 bg-indigo-50/50' : 'border-gray-200 bg-gray-50/50'}`}
             >
               {photoPreview || isPhotoLoading ? (
                 <div className="relative w-full h-72 sm:h-56 group">
@@ -326,10 +322,15 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                   )}
                   {!isAssignmentEditMode && !isPhotoLoading && (
                     <>
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl">
-                        <p className="text-white font-medium flex items-center gap-2 bg-black/20 px-4 py-2 rounded-lg backdrop-blur-sm">
-                          <Camera size={20} /> 更換照片
-                        </p>
+                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-xl gap-3">
+                        <label className="cursor-pointer text-white font-bold flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 px-6 py-2.5 rounded-xl backdrop-blur-md transition-all active:scale-95 w-48">
+                          <Camera size={20} /> 重新拍照
+                          <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} className="hidden" onClick={(e) => { e.currentTarget.value = ''; }} />
+                        </label>
+                        <label className="cursor-pointer text-white font-bold flex items-center justify-center gap-2 bg-white/20 hover:bg-white/30 px-6 py-2.5 rounded-xl backdrop-blur-md transition-all active:scale-95 w-48">
+                          <ImageIcon size={20} /> 從相簿選擇
+                          <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" onClick={(e) => { e.currentTarget.value = ''; }} />
+                        </label>
                       </div>
                       <button
                         type="button"
@@ -344,24 +345,23 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                   )}
                 </div>
               ) : (
-                <div className="py-10 sm:py-14 flex flex-col items-center justify-center text-gray-500 group">
-                  <div className="mb-4 p-5 bg-white rounded-3xl shadow-xl shadow-indigo-100 border border-indigo-50 group-hover:scale-110 transition-transform text-indigo-600">
-                    <Camera size={36} />
+                <div className="py-8 sm:py-12 flex flex-col items-center justify-center text-gray-500">
+                  <div className="flex gap-4 mb-4">
+                    <label className="cursor-pointer flex flex-col items-center justify-center p-5 bg-white rounded-3xl shadow-lg shadow-indigo-100/40 border border-indigo-50 hover:scale-105 active:scale-95 transition-all text-indigo-600 w-28 h-28">
+                      <Camera size={36} className="mb-2" />
+                      <span className="font-bold text-gray-800">拍照</span>
+                      <input type="file" accept="image/*" capture="environment" onChange={handlePhotoUpload} className="hidden" disabled={isAssignmentEditMode} onClick={(e) => { e.currentTarget.value = ''; }} />
+                    </label>
+                    <label className="cursor-pointer flex flex-col items-center justify-center p-5 bg-white rounded-3xl shadow-lg shadow-indigo-100/40 border border-indigo-50 hover:scale-105 active:scale-95 transition-all text-indigo-600 w-28 h-28">
+                      <ImageIcon size={36} className="mb-2" />
+                      <span className="font-bold text-gray-800">相簿</span>
+                      <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" disabled={isAssignmentEditMode} onClick={(e) => { e.currentTarget.value = ''; }} />
+                    </label>
                   </div>
-                  <p className="font-black text-xl text-gray-900 mb-1">點擊拍攝或上傳</p>
                   <p className="text-sm text-gray-400 font-medium">支援 JPG, PNG 格式</p>
                 </div>
               )}
-              <input 
-                id="photo-upload"
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handlePhotoUpload} 
-                accept="image/*" 
-                className="hidden" 
-                disabled={isAssignmentEditMode}
-              />
-            </label>
+            </div>
             {/* GPS Toast */}
             {gpsToast && (
               <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold mt-2 transition-all
