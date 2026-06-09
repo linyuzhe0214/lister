@@ -39,6 +39,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.photo || null);
   const [isPhotoLoading, setIsPhotoLoading] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [gpsToast, setGpsToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const locationType = watch('location_type');
   const highway = watch('highway');
@@ -88,19 +89,19 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
     // 用 exifr 解析 GPS（支援 JPEG / HEIC / PNG）
     try {
       const gps = await exifr.gps(file);
-      console.log('[EXIF GPS]', gps);
       if (gps?.latitude && gps?.longitude) {
         const coords = `${gps.latitude.toFixed(6)}, ${gps.longitude.toFixed(6)}`;
         if (!getValues('coordinates')) {
           setValue('coordinates', coords, { shouldDirty: true });
-          console.log('[EXIF GPS] 自動帶入座標:', coords);
         }
+        setGpsToast({ msg: `📍 已從照片自動帶入座標`, ok: true });
       } else {
-        console.log('[EXIF GPS] 照片無 GPS 資訊');
+        setGpsToast({ msg: '照片無 GPS 資訊，請手動定位', ok: false });
       }
-    } catch (err) {
-      console.warn('[EXIF GPS] 解析失敗:', err);
+    } catch {
+      setGpsToast({ msg: '照片無 GPS 資訊，請手動定位', ok: false });
     }
+    setTimeout(() => setGpsToast(null), 3500);
 
     // 讀 DataURL 做圖片壓縮
     const reader = new FileReader();
@@ -361,6 +362,14 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                 disabled={isAssignmentEditMode}
               />
             </label>
+            {/* GPS Toast */}
+            {gpsToast && (
+              <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold mt-2 transition-all
+                ${gpsToast.ok ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                <MapPin size={15} />
+                {gpsToast.msg}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
