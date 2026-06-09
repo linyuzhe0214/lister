@@ -360,6 +360,7 @@ export function ReportForm({ initialData, onSubmit, onCancel, isSubmitting, onGe
                 accept="image/*" 
                 className="hidden" 
                 disabled={isAssignmentEditMode}
+                capture="environment"
               />
             </label>
             {/* GPS Toast */}
