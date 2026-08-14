@@ -1,8 +1,20 @@
+// 💡 如果要強制綁定特定 Google 試算表，在此填入試算表 ID（從試算表網址 /d/ 與 /edit 之間複製）
+// 例如: const SPREADSHEET_ID = '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms';
+// 如果留空 ''，則會自動使用當前綁定的試算表 (getActiveSpreadsheet)
+const SPREADSHEET_ID = '';
+
 const SHEET_NAME = 'Reports';
+
+function getSpreadsheet() {
+  if (SPREADSHEET_ID && SPREADSHEET_ID.trim() !== '') {
+    return SpreadsheetApp.openById(SPREADSHEET_ID.trim());
+  }
+  return SpreadsheetApp.getActiveSpreadsheet();
+}
 
 // 自動檢查並建立表單與標題列
 function ensureSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_NAME);
   const targetHeaders = [
     'id', 'item_number', 'log_time', 'highway', 'direction', 'mileage', 'lane',
@@ -44,7 +56,7 @@ function ensureSheet() {
 }
 
 function ensureAssignSheet() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet();
   let sheet = ss.getSheetByName('AssignedWorks');
   if (!sheet) {
     sheet = ss.insertSheet('AssignedWorks');
@@ -412,7 +424,7 @@ function updateReport(id, data) {
     return responseJson({ success: true });
   } catch (err) {
     try {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const ss = getSpreadsheet();
       let debugSheet = ss.getSheetByName('DebugLogs');
       if (!debugSheet) {
         debugSheet = ss.insertSheet('DebugLogs');
