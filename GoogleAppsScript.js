@@ -5,6 +5,19 @@ const SPREADSHEET_ID = '';
 
 const SHEET_NAME = 'Reports';
 
+function sanitizeForSheet(val) {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'number' || typeof val === 'boolean') return val;
+  const str = String(val);
+  // Prevent formula injection: =, +, -, @, \t, \r
+  if (/^[=+\-@\t\r]/.test(str)) {
+    if (!/^[+\-]?\d+(\.\d+)?$/.test(str.trim())) {
+      return "'" + str;
+    }
+  }
+  return str;
+}
+
 function getSpreadsheet() {
   if (SPREADSHEET_ID && SPREADSHEET_ID.trim() !== '') {
     return SpreadsheetApp.openById(SPREADSHEET_ID.trim());
@@ -76,9 +89,10 @@ function doGet(e) {
 
   if (lastRow <= 1) return responseJson([]);
 
-  // Pagination support
+  // Pagination support with safe upper and lower bounds
   const limitStr = e.parameter.limit;
-  const limit = limitStr ? parseInt(limitStr, 10) : 500;
+  const parsedLimit = limitStr ? parseInt(limitStr, 10) : 500;
+  const limit = isNaN(parsedLimit) ? 500 : Math.min(Math.max(parsedLimit, 1), 2000);
   
   // Calculate start row (fetching from bottom to get newest)
   const startRow = Math.max(2, lastRow - limit + 1);
@@ -186,7 +200,7 @@ function assignWork(id, data) {
     const rowData = headers.map(header => {
       if (header === 'id') return id;
       if (header === 'created_at') return new Date().toISOString();
-      return data[header] !== undefined ? data[header] : '';
+      return data[header] !== undefined ? sanitizeForSheet(data[header]) : '';
     });
     sheet.appendRow(rowData);
     const compIdx = headers.indexOf('is_assigned_completed');
@@ -196,7 +210,7 @@ function assignWork(id, data) {
   } else {
     const rowData = headers.map((header, i) => {
       if (header === 'id') return id;
-      if (data[header] !== undefined) return data[header];
+      if (data[header] !== undefined) return sanitizeForSheet(data[header]);
       return allData[rowIndex - 1][i] !== undefined ? allData[rowIndex - 1][i] : '';
     });
     sheet.getRange(rowIndex, 1, 1, rowData.length).setValues([rowData]);
@@ -340,7 +354,7 @@ function createReport(data) {
     }
     if (val === undefined && h.includes('location')) val = data['location_type'];
 
-    return (val !== undefined && val !== null) ? val : '';
+    return (val !== undefined && val !== null) ? sanitizeForSheet(val) : '';
   });
 
   sheet.appendRow(rowData);
@@ -400,7 +414,7 @@ function updateReport(id, data) {
           : val;
         // 如果有傳送座標才更新
         if (submitted !== undefined && submitted !== null) {
-          sheet.getRange(rowIndex, hdr.col).setValue(String(submitted).trim());
+          sheet.getRange(rowIndex, hdr.col).setValue(sanitizeForSheet(String(submitted).trim()));
         }
         return;
       }
@@ -417,7 +431,7 @@ function updateReport(id, data) {
       }
 
       // All other fields that were explicitly sent
-      sheet.getRange(rowIndex, hdr.col).setValue(val);
+      sheet.getRange(rowIndex, hdr.col).setValue(sanitizeForSheet(val));
     });
 
     SpreadsheetApp.flush();
