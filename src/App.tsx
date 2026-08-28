@@ -8,6 +8,25 @@ import { SearchableDropdown } from './components/SearchableDropdown';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
+function escapeHtml(str: unknown): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function sanitizeForExcel(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  const str = String(val);
+  if (/^[=+\-@\t\r]/.test(str)) {
+    return `'${str}`;
+  }
+  return str;
+}
+
 export default function App() {
   const [reports, setReports] = useState<Report[]>([]);
   const photoCache = useRef<Map<number, string>>(new Map());
@@ -509,20 +528,20 @@ export default function App() {
       ${exportData.map((report, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td>${format(new Date(report.log_time), 'yyyy/MM/dd HH:mm')}</td>
-          <td>${report.location_type === 'mainline' ? '主線' : '匝道'}<br>${report.highway} ${report.direction}</td>
-          <td>${report.coordinates || '-'}</td>
-          <td>${report.mileage}<br>${report.lane}</td>
-          <td>${report.damage_condition}</td>
-          <td>${report.improvement_method}</td>
-          <td>${report.follow_up_method || '-'}</td>
-          <td>${report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : '-'}</td>
+          <td>${escapeHtml(format(new Date(report.log_time), 'yyyy/MM/dd HH:mm'))}</td>
+          <td>${report.location_type === 'mainline' ? '主線' : '匝道'}<br>${escapeHtml(report.highway)} ${escapeHtml(report.direction)}</td>
+          <td>${escapeHtml(report.coordinates) || '-'}</td>
+          <td>${escapeHtml(report.mileage)}<br>${escapeHtml(report.lane)}</td>
+          <td>${escapeHtml(report.damage_condition)}</td>
+          <td>${escapeHtml(report.improvement_method)}</td>
+          <td>${escapeHtml(report.follow_up_method) || '-'}</td>
+          <td>${report.completion_time ? escapeHtml(format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm')) : '-'}</td>
           ${activeTab === 'assignments' ? `
-            <td>${report.assign_type || '-'}</td>
+            <td>${escapeHtml(report.assign_type) || '-'}</td>
             <td>${report.is_assigned_completed ? '已完成' : '未完成'}</td>
           ` : ''}
           <td class="photo-cell">
-            ${report.photo ? `<img src="${report.photo}" alt="照片">` : '無照片'}
+            ${report.photo && (report.photo.startsWith('data:image/') || report.photo.startsWith('https://')) ? `<img src="${report.photo}" alt="照片">` : '無照片'}
           </td>
         </tr>
       `).join('')}
@@ -608,20 +627,20 @@ export default function App() {
           index + 1,
           format(new Date(report.log_time), 'yyyy/MM/dd HH:mm'),
           report.location_type === 'mainline' ? '主線' : '匝道',
-          report.highway || '',
-          report.direction || '',
-          report.coordinates || '',
-          report.mileage || '',
-          report.lane || '',
-          report.damage_condition || '',
-          report.improvement_method || '',
-          report.supervision_review || '',
-          report.follow_up_method || '',
+          sanitizeForExcel(report.highway || ''),
+          sanitizeForExcel(report.direction || ''),
+          sanitizeForExcel(report.coordinates || ''),
+          sanitizeForExcel(report.mileage || ''),
+          sanitizeForExcel(report.lane || ''),
+          sanitizeForExcel(report.damage_condition || ''),
+          sanitizeForExcel(report.improvement_method || ''),
+          sanitizeForExcel(report.supervision_review || ''),
+          sanitizeForExcel(report.follow_up_method || ''),
           report.completion_time ? format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm') : ''
         ];
 
         if (hasAssignments) {
-          rowData.push(report.assign_type || '');
+          rowData.push(sanitizeForExcel(report.assign_type || ''));
           rowData.push(report.is_assigned_completed ? '已完成' : '未完成');
         }
 
