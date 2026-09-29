@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Plus, Filter, Search, ArrowUpDown, Download, X } from 'lucide-react';
+import { Plus, Filter, Search, ArrowUpDown, Download, X, Layers, Activity, FileSpreadsheet, FileText, CheckCircle2, Clock, RotateCcw, ShieldCheck, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { Report } from './types';
 import { ReportForm } from './components/ReportForm';
@@ -181,6 +181,47 @@ export default function App() {
     .filter(Boolean)
     .sort((a, b) => parseMileage(a) - parseMileage(b)), 
   [tabFilteredReports]);
+
+  const stats = useMemo(() => {
+    const total = reports.length;
+    const mainlineCount = reports.filter(r => r.location_type === 'mainline').length;
+    const rampCount = reports.filter(r => r.location_type === 'ramp').length;
+    const assignedCount = reports.filter(r => Boolean(r.assign_type)).length;
+    const completedCount = reports.filter(r => r.is_assigned_completed).length;
+    const pendingCount = assignedCount - completedCount;
+    return {
+      total,
+      mainlineCount,
+      rampCount,
+      assignedCount,
+      completedCount,
+      pendingCount: Math.max(0, pendingCount)
+    };
+  }, [reports]);
+
+  const hasActiveFilters = useMemo(() => {
+    return filter !== 'all' ||
+      filterHighway !== 'all' ||
+      filterDamage !== 'all' ||
+      filterAssignType !== 'all' ||
+      mileageStart !== '' ||
+      mileageEnd !== '' ||
+      startDate !== '' ||
+      endDate !== '' ||
+      globalSearch !== '';
+  }, [filter, filterHighway, filterDamage, filterAssignType, mileageStart, mileageEnd, startDate, endDate, globalSearch]);
+
+  const resetFilters = useCallback(() => {
+    setFilter('all');
+    setFilterHighway('all');
+    setFilterDamage('all');
+    setFilterAssignType('all');
+    setMileageStart('');
+    setMileageEnd('');
+    setStartDate('');
+    setEndDate('');
+    setGlobalSearch('');
+  }, []);
 
   const filteredAndSortedReports = useMemo(() => {
     let result = [...tabFilteredReports];
@@ -686,144 +727,233 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-100/50 to-slate-50 font-sans text-slate-800">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40">
+      <header className="glass-panel sticky top-0 z-40 border-b border-slate-200/80 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16 sm:h-20 gap-4">
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              <div className="bg-indigo-600 text-white p-1.5 sm:p-2.5 rounded-xl shadow-lg shadow-indigo-200">
-                <Search size={22} className="sm:w-6 sm:h-6" />
+          <div className="flex justify-between items-center h-16 sm:h-20 gap-3 sm:gap-4">
+            {/* Brand Logo & Title */}
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="bg-gradient-to-tr from-indigo-600 via-blue-600 to-cyan-500 text-white p-2.5 rounded-2xl shadow-md shadow-indigo-500/20 ring-1 ring-white/30">
+                <ShieldCheck size={22} className="sm:w-6 sm:h-6" />
               </div>
-              <h1 className="text-lg sm:text-2xl font-black text-gray-900 tracking-tight whitespace-nowrap hidden sm:block">國道巡查</h1>
+              <div className="hidden sm:block">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight whitespace-nowrap">
+                    國道巡查工程
+                  </h1>
+                  <span className="text-[10px] font-extrabold text-indigo-700 bg-indigo-50 border border-indigo-200/70 px-2 py-0.5 rounded-full uppercase tracking-wider shadow-2xs">
+                    Pro
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 font-semibold tracking-wide">道路養護與派工管理中心</p>
+              </div>
             </div>
             
+            {/* Search Input */}
             <div className="flex-1 max-w-md">
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Search size={18} className="text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+                  <Search size={16} className="text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
                 </div>
                 <input
                   type="text"
                   value={globalSearch}
                   onChange={(e) => setGlobalSearch(e.target.value)}
-                  placeholder="搜尋公路、損壞..."
-                  className="block w-full pl-11 pr-4 py-2 sm:py-2.5 border border-gray-200 rounded-2xl bg-gray-50/50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-sm sm:text-base transition-all"
+                  placeholder="搜尋公路、損壞、項目、里程..."
+                  className="block w-full pl-10 pr-9 py-2 sm:py-2.5 border border-slate-200/90 rounded-2xl bg-white/80 hover:bg-white placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-xs sm:text-sm font-medium transition-all shadow-2xs"
                 />
+                {globalSearch && (
+                  <button
+                    onClick={() => setGlobalSearch('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+            {/* Actions */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
               <button 
                 onClick={exportToExcel}
                 disabled={isExporting}
-                className="p-2 sm:px-4 sm:py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl shadow-sm transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
+                className="p-2 sm:px-3.5 sm:py-2.5 bg-white border border-slate-200/90 hover:border-emerald-300 hover:bg-emerald-50/40 text-slate-700 hover:text-emerald-700 rounded-xl shadow-2xs transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-50 text-xs sm:text-sm font-semibold cursor-pointer"
                 title="匯出 Excel 報表"
               >
-                {isExporting ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-200 border-t-indigo-600"></div> : <Download size={20} />}
-                <span className="hidden md:inline font-bold">匯出 Excel</span>
+                {isExporting ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-200 border-t-emerald-600" /> : <FileSpreadsheet size={16} className="text-emerald-600" />}
+                <span className="hidden md:inline">匯出 Excel</span>
               </button>
               <button 
                 onClick={exportToHTML}
                 disabled={isExporting}
-                className="p-2 sm:px-4 sm:py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-2xl shadow-sm transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50"
+                className="p-2 sm:px-3.5 sm:py-2.5 bg-white border border-slate-200/90 hover:border-rose-300 hover:bg-rose-50/40 text-slate-700 hover:text-rose-700 rounded-xl shadow-2xs transition-all active:scale-95 flex items-center gap-1.5 disabled:opacity-50 text-xs sm:text-sm font-semibold cursor-pointer"
                 title="匯出含照片報表 (PDF/HTML)"
               >
-                {isExporting ? <div className="animate-spin rounded-full h-5 w-5 border-2 border-indigo-200 border-t-indigo-600"></div> : <Download size={20} />}
-                <span className="hidden md:inline font-bold">{isExporting ? '載入中' : '匯出 PDF'}</span>
+                {isExporting ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-rose-200 border-t-rose-600" /> : <FileText size={16} className="text-rose-500" />}
+                <span className="hidden md:inline">{isExporting ? '載入中' : '匯出 PDF'}</span>
               </button>
               <button 
                 onClick={() => {
                   setEditingReport(null);
                   setIsFormOpen(true);
                 }}
-                className="p-2 sm:px-5 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-100 transition-all active:scale-95 flex items-center gap-2"
+                className="p-2 sm:px-4 sm:py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-xl shadow-md shadow-indigo-500/25 transition-all active:scale-95 flex items-center gap-1.5 font-bold text-xs sm:text-sm cursor-pointer"
               >
-                <Plus size={20} />
-                <span className="hidden md:inline font-bold">新增</span>
+                <Plus size={18} />
+                <span className="hidden md:inline">新增查報</span>
               </button>
             </div>
           </div>
           
-          <div className="flex gap-6 mt-4 overflow-x-auto no-scrollbar">
+          {/* Navigation Tabs */}
+          <div className="flex gap-2 pb-2.5 overflow-x-auto no-scrollbar">
             <button 
               onClick={() => setActiveTab('reports')}
-              className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === 'reports' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                activeTab === 'reports' 
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/25 ring-1 ring-indigo-500' 
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
             >
-              巡查紀錄
+              <Layers size={15} />
+              <span>巡查紀錄</span>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${activeTab === 'reports' ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                {reports.length}
+              </span>
             </button>
             <button 
               onClick={() => setActiveTab('assignments')}
-              className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${activeTab === 'assignments' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+              className={`px-4 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                activeTab === 'assignments' 
+                  ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/25 ring-1 ring-indigo-500' 
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
             >
-              派工單
+              <Activity size={15} />
+              <span>派工管理</span>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
+                activeTab === 'assignments' 
+                  ? 'bg-white/25 text-white' 
+                  : stats.pendingCount > 0 
+                    ? 'bg-amber-100 text-amber-700' 
+                    : 'bg-slate-100 text-slate-600'
+              }`}>
+                {stats.assignedCount}
+              </span>
+              {stats.pendingCount > 0 && activeTab !== 'assignments' && (
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              )}
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+        {/* KPI Dashboard Overview */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 mb-5">
+          <div className="glass-card p-3.5 rounded-2xl shadow-2xs hover:shadow-xs transition-shadow">
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-xs font-semibold text-slate-500">查報總量</span>
+              <Layers size={14} className="text-indigo-500" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{stats.total}</div>
+          </div>
+          <div className="glass-card p-3.5 rounded-2xl shadow-2xs hover:shadow-xs transition-shadow">
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-xs font-semibold text-slate-500">主線路段</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-100">主線</span>
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-sky-700 tracking-tight">{stats.mainlineCount}</div>
+          </div>
+          <div className="glass-card p-3.5 rounded-2xl shadow-2xs hover:shadow-xs transition-shadow">
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-xs font-semibold text-slate-500">匝道 / 出入口</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100">匝道</span>
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-amber-600 tracking-tight">{stats.rampCount}</div>
+          </div>
+          <div className="glass-card p-3.5 rounded-2xl shadow-2xs hover:shadow-xs transition-shadow">
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-xs font-semibold text-slate-500">已派工待辦</span>
+              <Clock size={14} className="text-orange-500" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-orange-600 tracking-tight">{stats.pendingCount}</div>
+          </div>
+          <div className="col-span-2 sm:col-span-4 lg:col-span-1 glass-card p-3.5 rounded-2xl shadow-2xs hover:shadow-xs transition-shadow">
+            <div className="flex items-center justify-between text-slate-400 mb-1">
+              <span className="text-xs font-semibold text-slate-500">派工已完成</span>
+              <CheckCircle2 size={14} className="text-emerald-500" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 tracking-tight">{stats.completedCount}</div>
+          </div>
+        </div>
+
         {/* Mobile Filter Toggle */}
         <div className="flex lg:hidden items-center justify-between mb-4 gap-3">
           <button 
             onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border transition-all font-bold text-sm ${showMobileFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-gray-200 text-gray-700'}`}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border transition-all font-bold text-xs sm:text-sm cursor-pointer ${showMobileFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-700 shadow-2xs'}`}
           >
-            <Filter size={18} />
-            {showMobileFilters ? '隱藏篩選' : '進階篩選'}
+            <Filter size={16} />
+            {showMobileFilters ? '隱藏篩選器' : '開啟篩選器'}
           </button>
           
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-sm">
-            <ArrowUpDown size={16} className="text-gray-400" />
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-2xs">
+            <ArrowUpDown size={14} className="text-slate-400" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-transparent border-none text-xs font-bold focus:ring-0 outline-none p-0 pr-6"
+              className="bg-transparent border-none text-xs font-bold text-slate-700 focus:ring-0 outline-none p-0 pr-4 cursor-pointer"
             >
-              <option value="dateDesc">日期(新)</option>
-              <option value="dateAsc">日期(舊)</option>
-              <option value="mileageAsc">里程(小)</option>
-              <option value="mileageDesc">里程(大)</option>
+              <option value="dateDesc">日期 (新)</option>
+              <option value="dateAsc">日期 (舊)</option>
+              <option value="mileageAsc">里程 (小)</option>
+              <option value="mileageDesc">里程 (大)</option>
             </select>
           </div>
         </div>
 
         {/* Filters Section */}
-        <div className={`${showMobileFilters ? 'flex' : 'hidden lg:flex'} flex-col gap-3 mb-8 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 animate-slide-up sticky top-[106px] sm:top-[124px] z-30`}>
+        <div className={`${showMobileFilters ? 'flex' : 'hidden lg:flex'} flex-col gap-3 mb-6 bg-white/95 backdrop-blur-md p-4 sm:p-5 rounded-2xl shadow-xs border border-slate-200/80 animate-slide-up sticky top-[106px] sm:top-[128px] z-30`}>
           {/* Row 1: Type buttons + Dropdowns + Sort */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-            <div className="flex items-center gap-2 text-gray-500 font-bold hidden lg:flex shrink-0">
-              <Filter size={18} />
-              <span className="text-sm">篩選</span>
+            <div className="flex items-center gap-2 text-slate-400 font-bold hidden lg:flex shrink-0">
+              <Filter size={16} className="text-indigo-600" />
+              <span className="text-xs text-slate-600 font-bold">過濾</span>
             </div>
 
-            <div className="flex gap-2 shrink-0">
+            <div className="flex gap-1.5 shrink-0 bg-slate-100/80 p-1 rounded-xl">
               <button 
                 onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all
-                  ${filter === 'all' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' : 'text-gray-600 bg-gray-50 hover:bg-gray-100'}`}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filter === 'all' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
                 全部
               </button>
               <button 
                 onClick={() => setFilter('mainline')}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all
-                  ${filter === 'mainline' ? 'bg-blue-600 text-white shadow-md shadow-blue-100' : 'text-gray-600 bg-gray-50 hover:bg-gray-100'}`}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filter === 'mainline' ? 'bg-sky-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
                 主線
               </button>
               <button 
                 onClick={() => setFilter('ramp')}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all
-                  ${filter === 'ramp' ? 'bg-amber-500 text-white shadow-md shadow-amber-100' : 'text-gray-600 bg-gray-50 hover:bg-gray-100'}`}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  filter === 'ramp' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
                 匝道
               </button>
             </div>
 
-            <div className="h-px lg:h-6 lg:w-px bg-gray-100 shrink-0" />
+            <div className="h-px lg:h-6 lg:w-px bg-slate-200 shrink-0" />
 
-            <div className="flex flex-wrap lg:flex-nowrap items-center gap-3 flex-1">
+            <div className="flex flex-wrap lg:flex-nowrap items-center gap-2.5 flex-1">
               <SearchableDropdown
                 options={uniqueHighways}
                 value={filterHighway}
@@ -849,14 +979,25 @@ export default function App() {
                   allLabel="所有派工項目"
                 />
               )}
+
+              {hasActiveFilters && (
+                <button
+                  onClick={resetFilters}
+                  className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 border border-slate-200/80 hover:border-rose-200 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ml-auto"
+                  title="清除所有篩選條件"
+                >
+                  <RotateCcw size={13} />
+                  <span>重設篩選</span>
+                </button>
+              )}
             </div>
 
-            <div className="hidden lg:flex items-center gap-2 border-l border-gray-100 pl-4 shrink-0">
-              <ArrowUpDown size={15} className="text-gray-400" />
+            <div className="hidden lg:flex items-center gap-2 border-l border-slate-200 pl-3 shrink-0">
+              <ArrowUpDown size={14} className="text-slate-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none cursor-pointer"
+                className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none cursor-pointer transition-all"
               >
                 <option value="dateDesc">日期 (新到舊)</option>
                 <option value="dateAsc">日期 (舊到新)</option>
@@ -867,82 +1008,82 @@ export default function App() {
           </div>
 
           {/* Row 2: Date range + Mileage range */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t border-gray-50">
+          <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t border-slate-100">
             <div className="flex items-center gap-2 flex-1">
-              <span className="text-xs font-bold text-gray-400 shrink-0 w-14">登錄日期</span>
+              <span className="text-xs font-bold text-slate-400 shrink-0 w-14">登錄日期</span>
               <div className="flex-1 relative">
                 <input
                   type="date"
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                  className="w-full px-3 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                   title="開始日期"
                 />
                 {startDate && (
                   <button 
                     onClick={() => setStartDate('')}
-                    className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    <X size={13} />
+                    <X size={12} />
                   </button>
                 )}
               </div>
-              <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
+              <span className="text-slate-400 text-xs font-bold shrink-0">至</span>
               <div className="flex-1 relative">
                 <input
                   type="date"
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+                  className="w-full px-3 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                   title="結束日期"
                 />
                 {endDate && (
                   <button 
                     onClick={() => setEndDate('')}
-                    className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    <X size={13} />
+                    <X size={12} />
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="hidden sm:block w-px bg-gray-100 shrink-0" />
+            <div className="hidden sm:block w-px bg-slate-200 shrink-0" />
 
             <div className="flex items-center gap-2 flex-1">
-              <span className="text-xs font-bold text-gray-400 shrink-0 w-14">里程範圍</span>
+              <span className="text-xs font-bold text-slate-400 shrink-0 w-14">里程範圍</span>
               <div className="flex-1 relative">
                 <input
                   type="text"
                   placeholder="起始里程 (如 181k)"
                   value={mileageStart}
                   onChange={e => setMileageStart(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                  className="w-full px-3 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-slate-400"
                 />
                 {mileageStart && (
                   <button 
                     onClick={() => setMileageStart('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    <X size={13} />
+                    <X size={12} />
                   </button>
                 )}
               </div>
-              <span className="text-gray-400 text-xs font-bold shrink-0">至</span>
+              <span className="text-slate-400 text-xs font-bold shrink-0">至</span>
               <div className="flex-1 relative">
                 <input
                   type="text"
                   placeholder="結束里程 (如 183k)"
                   value={mileageEnd}
                   onChange={e => setMileageEnd(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-gray-400"
+                  className="w-full px-3 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder-slate-400"
                 />
                 {mileageEnd && (
                   <button 
                     onClick={() => setMileageEnd('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 transition-colors"
                   >
-                    <X size={13} />
+                    <X size={12} />
                   </button>
                 )}
               </div>
@@ -952,8 +1093,9 @@ export default function App() {
 
         {/* Content */}
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600"></div>
+          <div className="flex flex-col justify-center items-center h-64 gap-3 bg-white/70 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
+            <div className="animate-spin rounded-full h-10 w-10 border-3 border-indigo-200 border-t-indigo-600" />
+            <span className="text-xs font-semibold text-slate-500">正在同步雲端巡查資料庫...</span>
           </div>
         ) : (
           <ReportList 
@@ -993,24 +1135,24 @@ export default function App() {
 
       {/* Delete Confirm Modal */}
       {deletingReportId !== null && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm p-6 relative">
+            <h3 className="text-base font-bold text-slate-900 mb-2">
               {activeTab === 'assignments' ? '確定要取消此派工嗎？' : '確定要刪除這筆紀錄嗎？'}
             </h3>
-            <p className="text-gray-500 mb-6">
-              {activeTab === 'assignments' ? '取消派工不會刪除原始巡查紀錄。' : '刪除後將無法復原。'}
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              {activeTab === 'assignments' ? '取消派工不會刪除原始巡查紀錄，可隨時重新派工。' : '刪除後將從資料庫中永久移除，無法復原。'}
             </p>
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-2.5">
               <button 
                 onClick={() => setDeletingReportId(null)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl font-bold text-xs transition-colors cursor-pointer"
               >
                 取消
               </button>
               <button 
                 onClick={confirmDelete}
-                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs shadow-sm shadow-rose-500/20 transition-all cursor-pointer active:scale-95"
               >
                 {activeTab === 'assignments' ? '確定取消派工' : '確定刪除'}
               </button>

@@ -34,30 +34,31 @@ export function SearchableDropdown({ options, value, onChange, placeholder, allL
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-48 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+        className="flex items-center justify-between w-full sm:w-44 px-3.5 py-2 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200/90 rounded-xl text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-xs"
       >
         <span className="truncate mr-2">
           {value === 'all' ? allLabel : value}
         </span>
-        <ChevronDown size={16} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={15} className={`text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-indigo-600' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-56 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-gray-100">
+        <div className="absolute z-50 w-60 mt-1.5 bg-white/95 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-xl shadow-slate-900/10 overflow-hidden animate-slide-up">
+          <div className="p-2 border-b border-slate-100 bg-slate-50/50">
             <div className="relative">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                className="w-full pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="搜尋..."
+                className="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                placeholder="快速搜尋項目..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
+                autoFocus
               />
             </div>
           </div>
-          <div className="max-h-60 overflow-y-auto p-1">
+          <div className="max-h-60 overflow-y-auto p-1.5 custom-scrollbar">
             <button
               type="button"
               onClick={() => {
@@ -65,12 +66,12 @@ export function SearchableDropdown({ options, value, onChange, placeholder, allL
                 setIsOpen(false);
                 setSearchTerm('');
               }}
-              className={`flex items-center justify-between w-full px-3 py-2 text-sm rounded-md transition-colors ${
-                value === 'all' ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-700 hover:bg-gray-50'
+              className={`flex items-center justify-between w-full px-3 py-2 text-xs font-semibold rounded-xl transition-all ${
+                value === 'all' ? 'bg-indigo-50 text-indigo-700 shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              {allLabel}
-              {value === 'all' && <Check size={16} className="text-indigo-600" />}
+              <span>{allLabel}</span>
+              {value === 'all' && <Check size={14} className="text-indigo-600" />}
             </button>
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option) => (
@@ -82,17 +83,17 @@ export function SearchableDropdown({ options, value, onChange, placeholder, allL
                     setIsOpen(false);
                     setSearchTerm('');
                   }}
-                  className={`flex items-center justify-between w-full px-3 py-2 text-sm rounded-md transition-colors ${
-                    value === option ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                  className={`flex items-center justify-between w-full px-3 py-2 text-xs font-medium rounded-xl transition-all ${
+                    value === option ? 'bg-indigo-50 text-indigo-700 font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                 >
                   <span className="truncate">{option}</span>
-                  {value === option && <Check size={16} className="text-indigo-600" />}
+                  {value === option && <Check size={14} className="text-indigo-600" />}
                 </button>
               ))
             ) : (
-              <div className="px-3 py-4 text-sm text-center text-gray-500">
-                找不到相符的項目
+              <div className="px-3 py-4 text-xs text-center text-slate-400">
+                無相符項目
               </div>
             )}
           </div>

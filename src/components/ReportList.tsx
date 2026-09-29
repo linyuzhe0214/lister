@@ -244,64 +244,70 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
         style={{ ...props.style, cursor: 'grab' }}
       />
     )),
-    Table: (props: any) => <table {...props} className="w-full text-left border-collapse min-w-[1200px]" />,
-    TableHead: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>((props, ref) => <thead {...props} ref={ref} className="bg-gray-50 text-sm font-medium text-gray-500 shadow-sm" />),
+    Table: (props: any) => <table {...props} className="w-full text-left border-collapse min-w-[1250px]" />,
+    TableHead: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>((props, ref) => (
+      <thead {...props} ref={ref} className="bg-slate-50/95 backdrop-blur-md text-[11px] font-extrabold uppercase tracking-wider text-slate-500 border-b border-slate-200/90 shadow-2xs" />
+    )),
     TableRow: ({ item, context, ...props }: any) => {
       const report = item as Report;
       const { selectedIds, activeTab } = context;
       const isSelected = report.id ? selectedIds.includes(report.id) : false;
       const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
-      let rowBg = 'hover:bg-gray-50/50';
-      if (isSelected) rowBg = 'bg-indigo-50/30';
-      else if (isCompleted) rowBg = 'bg-green-50/50 hover:bg-green-100/50';
-      return <tr {...props} className={`transition-colors text-sm text-gray-800 ${rowBg}`} />;
+      let rowBg = 'hover:bg-slate-50/70';
+      if (isSelected) rowBg = 'bg-indigo-50/50';
+      else if (isCompleted) rowBg = 'bg-emerald-50/40 hover:bg-emerald-50/70';
+      return <tr {...props} className={`transition-colors text-xs font-medium text-slate-800 border-b border-slate-100 ${rowBg}`} />;
     },
-    TableBody: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>((props, ref) => <tbody {...props} ref={ref} className="divide-y divide-gray-100" />),
+    TableBody: React.forwardRef<HTMLTableSectionElement, React.HTMLAttributes<HTMLTableSectionElement>>((props, ref) => (
+      <tbody {...props} ref={ref} className="divide-y divide-slate-100/90" />
+    )),
   }), [handleTableMouseDown, handleTableMouseMove, stopTableDragging]);
 
   if (reports.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm p-12 text-center text-gray-500">
-        <MapPin size={48} className="mx-auto mb-4 text-gray-300" />
-        <h3 className="text-lg font-medium text-gray-900 mb-1">尚無巡查紀錄</h3>
-        <p>點擊右上角的「新增紀錄」開始建立</p>
+      <div className="glass-card rounded-3xl p-12 text-center text-slate-500 shadow-2xs border border-slate-200/80 my-4">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-500 flex items-center justify-center mx-auto mb-4 shadow-2xs">
+          <MapPin size={32} />
+        </div>
+        <h3 className="text-base font-bold text-slate-900 mb-1">查無符合條件的巡查紀錄</h3>
+        <p className="text-xs text-slate-400">請嘗試清除篩選條件，或點選右上角「新增查報」建立新紀錄</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {/* Selection Toolbar */}
       {selectedIds.length > 0 && (
-        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 text-white px-2.5 py-1 rounded-full text-xs font-bold">
-              {selectedIds.length} 已選
+        <div className="glass-panel bg-indigo-50/90 border border-indigo-200/80 rounded-2xl p-3.5 flex items-center justify-between shadow-xs animate-slide-up">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-indigo-600 text-white px-2.5 py-0.5 rounded-full text-xs font-extrabold shadow-2xs">
+              {selectedIds.length} 已選取
             </div>
-            <span className="text-indigo-900 font-medium">個項目</span>
+            <span className="text-xs text-indigo-900 font-semibold">筆項目</span>
           </div>
           <button
             onClick={handleBulkDelete}
-            className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-md transition-all active:scale-95 text-sm font-bold"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs transition-all active:scale-95 text-xs font-bold cursor-pointer"
           >
-            <Trash2 size={18} />
+            <Trash2 size={15} />
             批次刪除
           </button>
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 overflow-hidden relative">
         {/* Top Scrollbar (Visible on both PC and Mobile) */}
         <div 
           ref={headerScrollRef}
           onScroll={handleScroll}
-          className="overflow-x-auto border-b border-gray-50 bg-gray-50/50 custom-scrollbar"
+          className="overflow-x-auto border-b border-slate-100 bg-slate-50/60 custom-scrollbar"
         >
-          <div className="min-w-[1200px] h-3 sm:h-1.5"></div>
+          <div className="min-w-[1250px] h-2.5 sm:h-1.5"></div>
         </div>
 
         <div 
-          className="hidden md:block h-[calc(100vh-240px)] w-full"
+          className="hidden md:block h-[calc(100vh-250px)] w-full"
         >
           <TableVirtuoso
             data={reports}
@@ -313,40 +319,40 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
             components={tableComponents}
             fixedHeaderContent={() => (
               <tr>
-                <th className={`p-4 w-10 sticky top-0 left-0 bg-gray-50 z-40 shadow-[0_1px_0_0_#f3f4f6] ${scrollState.left ? 'shadow-left' : ''}`}>
+                <th className={`p-3.5 w-12 sticky top-0 left-0 bg-slate-50/95 backdrop-blur-md z-40 border-b border-slate-200/90 shadow-[0_1px_0_0_#e2e8f0] ${scrollState.left ? 'shadow-left' : ''}`}>
                   <button 
                     onClick={toggleSelectAll}
-                    className="text-gray-400 hover:text-indigo-600 transition-colors"
+                    className="text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
                   >
                     {selectedIds.length === reports.length && reports.length > 0 ? (
-                      <CheckSquare size={20} className="text-indigo-600" />
+                      <CheckSquare size={18} className="text-indigo-600" />
                     ) : (
-                      <Square size={20} />
+                      <Square size={18} />
                     )}
                   </button>
                 </th>
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">項次</th>
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">登錄時間</th>
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">位置類型</th>
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">國道/方向</th>
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">項次</th>
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">登錄時間</th>
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">位置類型</th>
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">國道/方向</th>
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">
                   {filter === 'mainline' ? '里程' : filter === 'ramp' ? '交流道名稱' : '里程/交流道名稱'}
                 </th>
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">
                   {filter === 'mainline' ? '車道' : filter === 'ramp' ? '出口/入口' : '車道/出入口'}
                 </th>
-                <th className="p-4 min-w-[150px] bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">損壞狀況</th>
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">改善方式</th>
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">監造審查</th>
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">後續處理方式</th>
+                <th className="p-3.5 min-w-[150px] bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">損壞狀況</th>
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">改善方式</th>
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">監造審查</th>
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">後續處理方式</th>
                 {activeTab === 'assignments' && (
                   <>
-                    <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">派工項目</th>
-                    <th className="p-4 whitespace-nowrap text-center bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">狀態</th>
+                    <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">派工項目</th>
+                    <th className="p-3.5 whitespace-nowrap text-center bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">狀態</th>
                   </>
                 )}
-                <th className="p-4 whitespace-nowrap bg-gray-50 z-30 shadow-[0_1px_0_0_#f3f4f6]">完成時間</th>
-                <th className={`p-4 whitespace-nowrap text-center sticky top-0 right-0 bg-gray-50 z-40 shadow-[0_1px_0_0_#f3f4f6] ${scrollState.right ? 'shadow-right' : ''}`}>操作 / 照片</th>
+                <th className="p-3.5 whitespace-nowrap bg-slate-50/95 backdrop-blur-md z-30 border-b border-slate-200/90">完成時間</th>
+                <th className={`p-3.5 whitespace-nowrap text-center sticky top-0 right-0 bg-slate-50/95 backdrop-blur-md z-40 border-b border-slate-200/90 shadow-[0_1px_0_0_#e2e8f0] ${scrollState.right ? 'shadow-right' : ''}`}>操作 / 照片</th>
               </tr>
             )}
             itemContent={(index, report) => (
@@ -500,31 +506,37 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
 
       {/* Assignment Modal */}
       {assigningReportId !== null && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 transition-opacity">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm relative border border-slate-100">
             <button 
               onClick={() => setAssigningReportId(null)} 
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-                <AlertCircle size={24} />
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl">
+                <AlertCircle size={22} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">選擇派工項目</h3>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">選擇派工項目</h3>
+                <p className="text-xs text-slate-400 font-medium">指派後將自動同步至派工單</p>
+              </div>
             </div>
             
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
               <button 
                 onClick={() => { 
                   onAssign(assigningReportId, '冷料修補'); 
                   setAssigningReportId(null); 
                 }} 
-                className="w-full flex items-center justify-between px-5 py-4 bg-white border-2 border-blue-100 hover:border-blue-500 hover:bg-blue-50 text-blue-700 font-bold rounded-xl transition-all active:scale-[0.98] group"
+                className="w-full flex items-center justify-between px-4 py-3.5 bg-blue-50/50 hover:bg-blue-50 border border-blue-200/80 hover:border-blue-400 text-blue-800 font-bold rounded-2xl transition-all active:scale-[0.98] group cursor-pointer shadow-2xs"
               >
-                <span>冷料修補</span>
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 text-sm">選擇 →</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                  <span className="text-xs sm:text-sm">冷料修補</span>
+                </div>
+                <span className="text-xs text-blue-600 font-semibold group-hover:translate-x-0.5 transition-transform">選擇 →</span>
               </button>
               
               <button 
@@ -532,15 +544,18 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
                   onAssign(assigningReportId, '熱料刨鋪'); 
                   setAssigningReportId(null); 
                 }} 
-                className="w-full flex items-center justify-between px-5 py-4 bg-white border-2 border-orange-100 hover:border-orange-500 hover:bg-orange-50 text-orange-700 font-bold rounded-xl transition-all active:scale-[0.98] group"
+                className="w-full flex items-center justify-between px-4 py-3.5 bg-rose-50/50 hover:bg-rose-50 border border-rose-200/80 hover:border-rose-400 text-rose-800 font-bold rounded-2xl transition-all active:scale-[0.98] group cursor-pointer shadow-2xs"
               >
-                <span>熱料刨鋪</span>
-                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-orange-500 text-sm">選擇 →</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                  <span className="text-xs sm:text-sm">熱料刨鋪</span>
+                </div>
+                <span className="text-xs text-rose-600 font-semibold group-hover:translate-x-0.5 transition-transform">選擇 →</span>
               </button>
             </div>
             
-            <p className="mt-4 text-xs text-gray-500 text-center">
-              派工後此紀錄將會出現在「派工單」頁籤中
+            <p className="mt-4 text-[11px] text-slate-400 text-center">
+              派工後此紀錄將會出現在「派工管理」頁籤中
             </p>
           </div>
         </div>
@@ -548,29 +563,32 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
 
       {/* Completion Modal */}
       {completingReportId !== null && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 transition-opacity">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-slide-up">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm relative border border-slate-100">
             <button 
               onClick={() => setCompletingReportId(null)} 
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 bg-green-50 text-green-600 rounded-xl">
-                <CheckSquare size={24} />
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl">
+                <CheckSquare size={22} />
               </div>
-              <h3 className="text-xl font-bold text-gray-900">標示為完成</h3>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">標示派工完成</h3>
+                <p className="text-xs text-slate-400 font-medium">記錄施作完工日期</p>
+              </div>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">完成日期</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">完成日期</label>
                 <input 
                   type="date" 
                   value={completionDate}
                   onChange={(e) => setCompletionDate(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
                 />
               </div>
               
@@ -579,13 +597,13 @@ export function ReportList({ reports, filter, activeTab, hasMore, loadingMore, o
                   onToggleComplete(completingReportId, true, completionDate); 
                   setCompletingReportId(null); 
                 }} 
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl transition-all active:scale-[0.98]"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-xs cursor-pointer active:scale-[0.98]"
               >
-                確定完成
+                確定完工
               </button>
             </div>
             
-            <p className="mt-4 text-xs text-gray-500 text-center">
+            <p className="mt-4 text-[11px] text-slate-400 text-center">
               此日期將直接連動更新至該筆巡查紀錄中
             </p>
           </div>
@@ -635,54 +653,64 @@ const ReportRow = React.memo(({
   const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
   return (
     <>
-      <td className={`p-4 sticky-left z-20 ${isSelected ? 'bg-indigo-50/30' : (isCompleted ? 'bg-green-50/50' : 'bg-white')} ${scrollState.left ? 'shadow-left' : ''}`}>
+      <td className={`p-3.5 sticky-left z-20 ${isSelected ? 'bg-indigo-50/70' : (isCompleted ? 'bg-emerald-50/50' : 'bg-white')} ${scrollState.left ? 'shadow-left' : ''}`}>
         <button 
           onClick={() => report.id && toggleSelect(report.id)}
-          className="text-gray-400 hover:text-indigo-600 transition-colors"
+          className="text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
         >
           {isSelected ? (
-            <CheckSquare size={20} className="text-indigo-600" />
+            <CheckSquare size={18} className="text-indigo-600" />
           ) : (
-            <Square size={20} />
+            <Square size={18} />
           )}
         </button>
       </td>
-      <td className="p-4 font-medium text-gray-900">{index + 1}</td>
-      <td className="p-4 whitespace-nowrap">{report.log_time ? (() => { try { return format(new Date(report.log_time), 'yyyy/MM/dd HH:mm'); } catch { return String(report.log_time); } })() : '-'}</td>
-      <td className="p-4">
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium
-          ${report.location_type === 'mainline' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+      <td className="p-3.5 font-bold text-slate-800 text-xs">#{index + 1}</td>
+      <td className="p-3.5 whitespace-nowrap text-slate-500 text-xs font-medium">
+        {report.log_time ? (() => { try { return format(new Date(report.log_time), 'yyyy/MM/dd HH:mm'); } catch { return String(report.log_time); } })() : '-'}
+      </td>
+      <td className="p-3.5 whitespace-nowrap">
+        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide
+          ${report.location_type === 'mainline' ? 'bg-sky-50 text-sky-700 border border-sky-200/80' : 'bg-amber-50 text-amber-700 border border-amber-200/80'}`}>
           {report.location_type === 'mainline' ? '主線' : '匝道'}
         </span>
       </td>
-      <td className="p-4 whitespace-nowrap">{report.highway} {report.direction}</td>
-      <td className="p-4 whitespace-nowrap">
-        <div className="flex items-center gap-2">
-          {report.mileage}
+      <td className="p-3.5 whitespace-nowrap font-semibold text-slate-800 text-xs">{report.highway} {report.direction}</td>
+      <td className="p-3.5 whitespace-nowrap">
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono font-bold text-slate-700 bg-slate-100/80 px-2 py-0.5 rounded-md text-xs">
+            {report.mileage}
+          </span>
           {report.coordinates && (
             <button 
               onClick={() => window.open(`https://www.google.com/maps?q=${report.coordinates}`, '_blank')}
-              className="text-indigo-600 hover:text-indigo-800 transition-colors"
+              className="text-indigo-600 hover:text-indigo-800 p-1 hover:bg-indigo-50 rounded-md transition-colors cursor-pointer"
               title="查看地圖位置"
             >
-              <MapPin size={16} />
+              <MapPin size={15} />
             </button>
           )}
         </div>
       </td>
-      <td className="p-4 whitespace-nowrap">{report.lane}</td>
-      <td className="p-4">{report.damage_condition}</td>
-      <td className="p-4 whitespace-nowrap">{report.improvement_method}</td>
-      <td className="p-4 whitespace-nowrap">{report.supervision_review || '-'}</td>
-      <td className="p-4 whitespace-nowrap">{report.follow_up_method || '-'}</td>
+      <td className="p-3.5 whitespace-nowrap text-slate-600 text-xs">{report.lane}</td>
+      <td className="p-3.5 text-xs font-semibold text-slate-800">{report.damage_condition}</td>
+      <td className="p-3.5 whitespace-nowrap text-slate-600 text-xs">{report.improvement_method}</td>
+      <td className="p-3.5 whitespace-nowrap text-slate-500 text-xs">{report.supervision_review || '-'}</td>
+      <td className="p-3.5 whitespace-nowrap text-slate-500 text-xs">{report.follow_up_method || '-'}</td>
       {activeTab === 'assignments' && (
         <>
-          <td className="p-4 whitespace-nowrap">
-            <span className={`font-bold ${report.assign_type === '熱料刨鋪' ? 'text-red-500' : report.assign_type === '冷料修補' ? 'text-blue-500' : 'text-indigo-700'}`}>
+          <td className="p-3.5 whitespace-nowrap">
+            <span className={`px-2 py-0.5 rounded-md text-xs font-extrabold border ${
+              report.assign_type === '熱料刨鋪' 
+                ? 'bg-rose-50 text-rose-700 border-rose-200/80' 
+                : report.assign_type === '冷料修補' 
+                  ? 'bg-blue-50 text-blue-700 border-blue-200/80' 
+                  : 'bg-slate-100 text-slate-700 border-slate-200'
+            }`}>
               {report.assign_type || '-'}
             </span>
           </td>
-          <td className="p-4 whitespace-nowrap text-center">
+          <td className="p-3.5 whitespace-nowrap text-center">
             <button
               onClick={() => {
                 if (report.id) {
@@ -694,20 +722,22 @@ const ReportRow = React.memo(({
                   }
                 }
               }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs active:scale-95 cursor-pointer ${
                 report.is_assigned_completed 
-                  ? 'bg-green-500 text-white hover:bg-green-600' 
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
+                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
             >
-              {report.is_assigned_completed ? '已完成' : '標示完成'}
+              {report.is_assigned_completed ? '已完工' : '標示完工'}
             </button>
           </td>
         </>
       )}
-      <td className="p-4 whitespace-nowrap">{report.completion_time ? (() => { try { return format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm'); } catch { return String(report.completion_time); } })() : '-'}</td>
-      <td className={`p-4 text-center sticky-right z-20 ${isSelected ? 'bg-indigo-50/30' : (isCompleted ? 'bg-green-50/50' : 'bg-white')} ${scrollState.right ? 'shadow-right' : ''}`}>
-        <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+      <td className="p-3.5 whitespace-nowrap text-slate-500 text-xs">
+        {report.completion_time ? (() => { try { return format(new Date(report.completion_time), 'yyyy/MM/dd HH:mm'); } catch { return String(report.completion_time); } })() : '-'}
+      </td>
+      <td className={`p-3.5 text-center sticky-right z-20 ${isSelected ? 'bg-indigo-50/70' : (isCompleted ? 'bg-emerald-50/50' : 'bg-white')} ${scrollState.right ? 'shadow-right' : ''}`}>
+        <div className="flex items-center justify-center gap-1.5">
           {/* Photo Preview Button with LazyPhoto */}
           <LazyPhoto
             id={report.id}
@@ -715,43 +745,47 @@ const ReportRow = React.memo(({
             isViewed={isViewed}
             onGetPhoto={onGetPhoto}
             onClick={() => onPhotoClick(report)}
-            className="w-9 h-9 rounded-lg border flex-shrink-0"
-            badgeClassName="bottom-0.5 right-0.5 w-3.5 h-3.5"
+            className="w-8 h-8 rounded-lg border border-slate-200 flex-shrink-0 shadow-2xs"
+            badgeClassName="bottom-0.5 right-0.5 w-3 h-3"
           />
 
-          <div className="w-px h-6 bg-gray-100 mx-0.5 hidden xs:block" />
+          <div className="w-px h-5 bg-slate-200 mx-0.5 hidden xs:block" />
 
           {activeTab === 'reports' ? (
             <>
               <button 
                 onClick={() => report.id && setAssigningReportId(report.id)}
-                className={`p-2 rounded-lg transition-colors flex items-center gap-1 flex-shrink-0 ${report.assign_type ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}
-                title={report.assign_type ? `已派工: ${report.assign_type}` : '派工'}
+                className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 flex-shrink-0 cursor-pointer ${
+                  report.assign_type 
+                    ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' 
+                    : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'
+                }`}
+                title={report.assign_type ? `已派工: ${report.assign_type}` : '指派項目'}
               >
-                <AlertCircle size={18} />
+                <AlertCircle size={16} />
               </button>
               <button 
                 onClick={() => onEdit(report)}
-                className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex-shrink-0"
+                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
                 title="編輯紀錄"
               >
-                <Pencil size={18} />
+                <Pencil size={16} />
               </button>
               <button 
                 onClick={() => report.id && onDelete(report.id)}
-                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
                 title="刪除紀錄"
               >
-                <Trash2 size={18} />
+                <Trash2 size={16} />
               </button>
             </>
           ) : (
             <button 
               onClick={() => report.id && onDelete(report.id)}
-              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
               title="取消派工"
             >
-              <Trash2 size={18} />
+              <Trash2 size={16} />
             </button>
           )}
         </div>
@@ -798,8 +832,14 @@ const ReportCard = React.memo(({
   const isCompleted = activeTab === 'assignments' && report.is_assigned_completed;
   
   return (
-    <div className={`p-4 transition-all ${isSelected ? 'bg-indigo-50/50' : (isCompleted ? 'bg-green-50/30' : 'bg-white')} border-b border-gray-50 active:bg-gray-50`}>
-      <div className="flex items-start gap-4">
+    <div className={`p-4 mx-2 my-2.5 rounded-2xl transition-all border ${
+      isSelected 
+        ? 'bg-indigo-50/60 border-indigo-200' 
+        : isCompleted 
+          ? 'bg-emerald-50/40 border-emerald-100' 
+          : 'bg-white border-slate-200/80 shadow-2xs hover:shadow-xs'
+    }`}>
+      <div className="flex items-start gap-3.5">
         {/* Photo Thumbnail */}
         <LazyPhoto
           id={report.id}
@@ -807,31 +847,34 @@ const ReportCard = React.memo(({
           isViewed={isViewed}
           onGetPhoto={onGetPhoto}
           onClick={() => onPhotoClick(report)}
-          className="w-24 h-24 rounded-2xl border-2 shrink-0 shadow-sm"
-          badgeClassName="bottom-1 right-1 w-5 h-5"
+          className="w-22 h-22 rounded-2xl border border-slate-200 shrink-0 shadow-2xs"
+          badgeClassName="bottom-1 right-1 w-4 h-4"
         />
 
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start mb-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black text-indigo-400">#{index + 1}</span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider
-                ${report.location_type === 'mainline' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-black text-indigo-500">#{index + 1}</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                report.location_type === 'mainline' 
+                  ? 'bg-sky-50 text-sky-700 border border-sky-200/80' 
+                  : 'bg-amber-50 text-amber-700 border border-amber-200/80'
+              }`}>
                 {report.location_type === 'mainline' ? '主線' : '匝道'}
               </span>
             </div>
             <button 
               onClick={() => report.id && toggleSelect(report.id)}
-              className="text-gray-300"
+              className="text-slate-300 hover:text-indigo-600 transition-colors p-1"
             >
-              {isSelected ? <CheckSquare size={22} className="text-indigo-600" /> : <Square size={22} />}
+              {isSelected ? <CheckSquare size={20} className="text-indigo-600" /> : <Square size={20} />}
             </button>
           </div>
 
-          <h4 className="font-bold text-gray-900 truncate mb-0.5">
+          <h4 className="font-bold text-slate-900 truncate text-sm">
             {report.highway} {report.direction}
           </h4>
-          <div className="text-sm text-gray-600 font-medium flex items-center gap-1.5 mt-0.5">
+          <div className="text-xs text-slate-600 font-medium flex items-center gap-1.5 mt-0.5">
             {report.coordinates && (
               <button 
                 onClick={(e) => {
@@ -841,19 +884,24 @@ const ReportCard = React.memo(({
                 className="text-indigo-600 hover:text-indigo-800 transition-colors p-1 bg-indigo-50 hover:bg-indigo-100 rounded-md -ml-1 shrink-0"
                 title="查看地圖位置"
               >
-                <MapPin size={14} />
+                <MapPin size={13} />
               </button>
             )}
-            <span className="truncate">{report.mileage} · {report.lane}</span>
+            <span className="truncate font-mono font-bold text-slate-700">{report.mileage}</span>
+            <span>·</span>
+            <span className="truncate text-slate-500">{report.lane}</span>
           </div>
           
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <div className="px-2.5 py-1 bg-gray-100 rounded-lg text-[11px] font-bold text-gray-700">
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <div className="px-2 py-0.5 bg-slate-100 rounded-lg text-[11px] font-bold text-slate-700 border border-slate-200/60">
               {report.damage_condition}
             </div>
             {report.assign_type && (
-              <div className={`px-2.5 py-1 rounded-lg text-[11px] font-bold 
-                ${report.assign_type === '熱料刨鋪' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+              <div className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold border ${
+                report.assign_type === '熱料刨鋪' 
+                  ? 'bg-rose-50 text-rose-700 border-rose-200/80' 
+                  : 'bg-blue-50 text-blue-700 border-blue-200/80'
+              }`}>
                 {report.assign_type}
               </div>
             )}
@@ -861,8 +909,8 @@ const ReportCard = React.memo(({
         </div>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-        <span className="text-[11px] text-gray-400 font-medium">
+      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+        <span className="text-[11px] text-slate-400 font-medium">
           {report.log_time ? format(new Date(report.log_time), 'yyyy/MM/dd HH:mm') : '-'}
         </span>
         
@@ -879,35 +927,37 @@ const ReportCard = React.memo(({
                   }
                 }
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all shadow-sm ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs ${
                 report.is_assigned_completed 
-                  ? 'bg-green-500 text-white' 
-                  : 'bg-white border border-gray-200 text-gray-700'
+                  ? 'bg-emerald-600 text-white' 
+                  : 'bg-white border border-slate-200 text-slate-700'
               }`}
             >
-              {report.is_assigned_completed ? '已完成' : '標示完成'}
+              {report.is_assigned_completed ? '已完工' : '標示完工'}
             </button>
           ) : (
             <>
               <button 
                 onClick={() => report.id && setAssigningReportId(report.id)}
-                className="p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl"
+                className={`p-2 rounded-xl transition-colors ${
+                  report.assign_type ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-indigo-600'
+                }`}
               >
-                <AlertCircle size={20} />
+                <AlertCircle size={18} />
               </button>
               <button 
                 onClick={() => onEdit(report)}
-                className="p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl"
+                className="p-2 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors"
               >
-                <Pencil size={20} />
+                <Pencil size={18} />
               </button>
             </>
           )}
           <button 
             onClick={() => report.id && onDelete(report.id)}
-            className="p-2.5 text-gray-400 hover:text-red-500 rounded-xl"
+            className="p-2 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"
           >
-            <Trash2 size={20} />
+            <Trash2 size={18} />
           </button>
         </div>
       </div>
